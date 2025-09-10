@@ -52,6 +52,11 @@
     </div>
   </div>
 
+  <!-- 🎵 Background music -->
+  <audio id="bg-music" loop>
+    <source src="images/music.mp3" type="audio/mpeg">
+  </audio>
+
   <script>
     const board=document.getElementById('board'),
       player=document.getElementById('player'),
@@ -65,7 +70,8 @@
       muteBtn=document.getElementById('mute'),
       scoreEl=document.getElementById('score'),
       timerEl=document.getElementById('timer'),
-      levelEl=document.getElementById('level');
+      levelEl=document.getElementById('level'),
+      bgMusic=document.getElementById('bg-music');
 
     let dragging=false,offsetX=0,offsetY=0;
     let score=0,time=30,level=1,running=true,muted=false;
@@ -133,24 +139,17 @@
     }
     setInterval(tick,1000);
 
-    function checkCollisions(){
-      if(!running) return;
-      const pr=player.getBoundingClientRect(),
-            gr=grass.getBoundingClientRect();
-      const px=pr.left+pr.width/2, py=pr.top+pr.height/2; // player center
-      if(px>gr.left && px<gr.right && py>gr.top && py<gr.bottom){
-        gameOver(true);
-      }
-      tiles.forEach(t=>{
-        const tr=t.getBoundingClientRect();
+    function checkCollisions(){ if(!running) return;
+      const pr=player.getBoundingClientRect(), gr=grass.getBoundingClientRect();
+      const px=pr.left+pr.width/2, py=pr.top+pr.height/2;
+      if(px>gr.left && px<gr.right && py>gr.top && py<gr.bottom){ gameOver(true); }
+      tiles.forEach(t=>{ const tr=t.getBoundingClientRect();
         if(!(tr.right<pr.left||tr.left>pr.right||tr.bottom<pr.top||tr.top>pr.bottom)){
-          resetPlayer();
-          showToast(rageTile[Math.floor(Math.random()*rageTile.length)]);
+          resetPlayer(); showToast(rageTile[Math.floor(Math.random()*rageTile.length)]);
           beep(300,0.15);
         }
       });
-      bubbles.forEach(b=>{
-        const br=b.el.getBoundingClientRect();
+      bubbles.forEach(b=>{ const br=b.el.getBoundingClientRect();
         if(!(br.right<pr.left||br.left>pr.right||br.bottom<pr.top||br.top>pr.bottom)){
           score++; scoreEl.textContent=score;
           showToast("✨ "+b.el.innerText); beep(600,0.1);
@@ -159,24 +158,23 @@
     }
 
     function gameOver(won){
-      running=false;
-      overlay.style.display="flex";
+      running=false; overlay.style.display="flex";
       if(won){
         endTitle.textContent="Level "+level+" Complete!";
         endDesc.textContent=winMsgs[Math.floor(Math.random()*winMsgs.length)];
+        nextBtn.style.display="inline-block"; // ✅ show next if win
         score+=10; scoreEl.textContent=score; beep(800,0.15);
       } else {
         endTitle.textContent="Game Over";
         endDesc.textContent=rageTime[Math.floor(Math.random()*rageTime.length)];
+        nextBtn.style.display="none"; // ❌ hide next if lose
         beep(200,0.2);
       }
     }
 
-    // smooth updates
     function updatePlayer(){
       if(pendingX!==null&&pendingY!==null){
-        player.style.left=pendingX+"px";
-        player.style.top=pendingY+"px";
+        player.style.left=pendingX+"px"; player.style.top=pendingY+"px";
         checkCollisions();
       }
       requestAnimationFrame(updatePlayer);
@@ -184,9 +182,7 @@
     requestAnimationFrame(updatePlayer);
 
     // mouse drag
-    board.addEventListener("mousedown", e=>{
-      dragging=true; offsetX=e.offsetX; offsetY=e.offsetY;
-    });
+    board.addEventListener("mousedown", e=>{ dragging=true; offsetX=e.offsetX; offsetY=e.offsetY; startMusic(); });
     document.addEventListener("mouseup",()=>dragging=false);
     document.addEventListener("mousemove",e=>{
       if(!dragging||!running) return;
@@ -199,7 +195,7 @@
 
     // touch drag
     player.addEventListener("touchstart", e=>{
-      e.preventDefault();
+      e.preventDefault(); startMusic();
       dragging=true; const touch=e.touches[0];
       const rect=player.getBoundingClientRect();
       offsetX=touch.clientX-rect.left; offsetY=touch.clientY-rect.top;
@@ -220,27 +216,24 @@
       time=Math.max(10,30-(lv-1)*3); timerEl.textContent=time;
       tiles.forEach(t=>t.remove()); tiles=[]; bubbles.forEach(b=>b.el.remove()); bubbles=[];
       for(let i=0;i<lv+1;i++) spawnTile();
-      running=true;
-      overlay.style.display="none"; // also hide in case called directly
-      resetPlayer();
+      running=true; overlay.style.display="none"; resetPlayer();
     }
 
-    // ✅ hide overlay immediately before starting the level
     restartBtn.onclick=()=>{
-      overlay.style.display="none";
-      level=1; score=0; scoreEl.textContent=0;
-      startLevel(1);
+      overlay.style.display="none"; level=1; score=0; scoreEl.textContent=0; startLevel(1);
     };
     nextBtn.onclick=()=>{
-      overlay.style.display="none";
-      startLevel(level+1);
+      overlay.style.display="none"; startLevel(level+1);
     };
-    muteBtn.onclick=()=>{ muted=!muted; muteBtn.textContent=muted?"🔇 Unmute":"🔊 Mute"; };
+    muteBtn.onclick=()=>{
+      muted=!muted;
+      muteBtn.textContent=muted?"🔇 Unmute":"🔊 Mute";
+      if(muted) bgMusic.pause(); else bgMusic.play();
+    };
 
     setInterval(()=>{ if(running) spawnBubble(); },2000);
 
-    function moveTiles(){
-      if(!running) return;
+    function moveTiles(){ if(!running) return;
       const rect=board.getBoundingClientRect();
       tiles.forEach(t=>{
         let x=t.offsetLeft+t.vx, y=t.offsetTop+t.vy;
@@ -251,6 +244,14 @@
       });
     }
     setInterval(moveTiles,30);
+
+    // 🎵 Start music once user interacts
+    function startMusic(){
+      if(!muted && bgMusic.paused){
+        bgMusic.volume=0.4;
+        bgMusic.play().catch(()=>{});
+      }
+    }
 
     // boot
     startLevel(1);
