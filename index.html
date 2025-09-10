@@ -4,21 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Touch Grass Simulator 🌱</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+  <link rel="icon" href="images/grass.png">
 
   <style>
-    :root {
-      --bg: #0b1220;
-      --panel: #111a2b;
-      --text: #e9f0ff;
-      --muted: #9fb0d1;
-      --accent: #7cffa3;
-    }
     body {
       margin: 0;
       font-family: system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      background: #0b1220;
+      color: #e9f0ff;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -35,44 +28,37 @@
       border-radius: 12px;
       overflow: hidden;
     }
-    .grass {
-      position: absolute;
-      right: 0;
-      bottom: 0;
-      width: 120px;
-      height: 120px;
-      background: linear-gradient(green, darkgreen);
-    }
     .player {
       position: absolute;
       left: 20px;
       top: 20px;
       width: 48px;
       height: 48px;
-      background: #3498db;
-      border: 3px solid #000;
-      border-radius: 6px;
-      cursor: grab;
-      user-select: none;
     }
-    .tile {
+    .player img { width: 100%; height: 100%; }
+    .grass {
       position: absolute;
-      width: 60px;
-      height: 60px;
-      background: red;
-      opacity: 0.7;
+      right: 0;
+      bottom: 0;
+      width: 100px;
+      height: 100px;
     }
-    .bubble {
+    .grass img { width: 100%; height: 100%; }
+    .tile, .bubble {
       position: absolute;
-      padding: 6px 10px;
-      border-radius: 12px;
-      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .tile img, .bubble img {
+      width: 50px;
+      height: 50px;
+    }
+    .tile span, .bubble span {
+      font-size: 10px;
       color: #fff;
-      pointer-events: none;
-      opacity: 0.9;
     }
-    .bubble.bad { background: #b22; }
-    .bubble.good { background: #2a4; }
     .hud { margin: 10px 0; }
     .toast {
       position: absolute;
@@ -118,8 +104,8 @@
   </div>
 
   <div class="board" id="board">
-    <div class="grass" id="grass"></div>
-    <div class="player" id="player"></div>
+    <div class="grass" id="grass"><img src="images/grass.png" alt="grass"></div>
+    <div class="player" id="player"><img src="images/player.png" alt="player"></div>
     <div class="toast" id="toast"></div>
     <div class="overlay" id="overlay">
       <h2 id="end-title">You touched grass!</h2>
@@ -128,7 +114,6 @@
       <button id="harder">Harder pls</button>
     </div>
   </div>
-
   <script>
     const board=document.getElementById('board'),
       player=document.getElementById('player'),
@@ -148,11 +133,21 @@
     let score=0,time=30,level=1,running=true,muted=false;
     let bubbles=[],tiles=[];
 
+    const badHabits = [
+      { img:"images/doomscroll.png", label:"Doomscrolling" },
+      { img:"images/brainrot.png", label:"Brain Rot" },
+      { img:"images/procrastinate.png", label:"Procrastinate" }
+    ];
+    const goodVibes = [
+      { img:"images/vibe.png", label:"Vibe+1" },
+      { img:"images/grassboost.png", label:"Grass Power" },
+      { img:"images/sun.png", label:"Vitamin D" }
+    ];
+
     const rageTile=["🔥 Back to spawn, bot.","💀 NPC detected.","📉 Skill issue…"];
     const rageTime=["⌛ Ran out of time, doomscroller.","😭 Couldn't even touch grass."];
     const winMsgs=["🌱 You actually touched grass, wow.","✨ Fresh air unlocked."];
 
-    // 🔊 simple audio beeps
     function beep(f=440,d=0.1){
       if(muted) return;
       const ctx=new (window.AudioContext||window.webkitAudioContext)();
@@ -161,45 +156,41 @@
       o.frequency.value=f;o.type="sine";g.gain.value=0.05;
       o.start();o.stop(ctx.currentTime+d);
     }
-
     function showToast(m){
       toast.textContent=m;
       toast.classList.add('show');
       setTimeout(()=>toast.classList.remove('show'),1000);
     }
-
-    function resetPlayer(){
-      player.style.left="20px";
-      player.style.top="20px";
-    }
+    function resetPlayer(){ player.style.left="20px"; player.style.top="20px"; }
 
     function spawnTile(){
+      const data = badHabits[Math.floor(Math.random()*badHabits.length)];
       const t=document.createElement('div');
       t.className="tile";
       t.style.left=(60+Math.random()*350)+"px";
       t.style.top=(20+Math.random()*350)+"px";
+      const img=document.createElement("img"); img.src=data.img;
+      const label=document.createElement("span"); label.textContent=data.label;
+      t.appendChild(img); t.appendChild(label);
       board.appendChild(t);
-
-      // give velocity
-      t.vx = (Math.random()<0.5?-1:1)*(2+level);
-      t.vy = (Math.random()<0.5?-1:1)*(2+level);
-
+      t.vx=(Math.random()<0.5?-1:1)*(2+level);
+      t.vy=(Math.random()<0.5?-1:1)*(2+level);
       tiles.push(t);
     }
 
     function spawnBubble(){
+      const data=goodVibes[Math.floor(Math.random()*goodVibes.length)];
       const b=document.createElement('div');
-      const bad=Math.random()<0.6;
-      b.className="bubble "+(bad?"bad":"good");
-      b.textContent= bad?"NPC":"Vibe+1";
+      b.className="bubble";
       b.style.left=(Math.random()*400)+"px";
       b.style.top=(Math.random()*400)+"px";
+      const img=document.createElement("img"); img.src=data.img;
+      const label=document.createElement("span"); label.textContent=data.label;
+      b.appendChild(img); b.appendChild(label);
       board.appendChild(b);
-      bubbles.push({el:b,bad});
+      bubbles.push({el:b,bad:false});
       setTimeout(()=>{b.remove();bubbles=bubbles.filter(x=>x.el!==b)},5000);
     }
-
-    // timer tick
     function tick(){
       if(!running) return;
       time--; timerEl.textContent=time;
@@ -213,12 +204,11 @@
     }
     setInterval(tick,1000);
 
-    // check collisions for win / tiles / bubbles
     function checkCollisions(){
       const pr=player.getBoundingClientRect(),
             gr=grass.getBoundingClientRect();
 
-      // ✅ win if touching grass
+      // win
       if(!(gr.right<pr.left||gr.left>pr.right||gr.bottom<pr.top||gr.top>pr.bottom)){
         running=false;
         overlay.style.display="flex";
@@ -228,7 +218,7 @@
         beep(800,0.15);
       }
 
-      // ❌ tiles reset
+      // bad tiles
       tiles.forEach(t=>{
         const tr=t.getBoundingClientRect();
         if(!(tr.right<pr.left||tr.left>pr.right||tr.bottom<pr.top||tr.top>pr.bottom)){
@@ -238,24 +228,18 @@
         }
       });
 
-      // 😵 bubbles
+      // good bubbles
       bubbles.forEach(b=>{
         const brc=b.el.getBoundingClientRect();
         if(!(brc.right<pr.left||brc.left>pr.right||brc.bottom<pr.top||brc.top>pr.bottom)){
-          if(b.bad){
-            player.style.left=(parseInt(player.style.left)-20)+"px";
-            showToast("😵 Bumped!");
-            beep(250,0.1);
-          } else {
-            score++; scoreEl.textContent=score;
-            showToast("✨ +1 vibe");
-            beep(600,0.1);
-          }
+          score++; scoreEl.textContent=score;
+          showToast("✨ "+b.el.innerText);
+          beep(600,0.1);
         }
       });
     }
 
-    // dragging controls (mouse)
+    // mouse drag
     board.addEventListener("mousedown", e=>{
       dragging=true; offsetX=e.offsetX; offsetY=e.offsetY;
     });
@@ -270,10 +254,9 @@
       checkCollisions();
     });
 
-    // dragging controls (touch)
+    // touch drag
     player.addEventListener("touchstart", e=>{
-      dragging=true;
-      const touch=e.touches[0];
+      dragging=true; const touch=e.touches[0];
       const rect=player.getBoundingClientRect();
       offsetX=touch.clientX-rect.left;
       offsetY=touch.clientY-rect.top;
@@ -290,7 +273,6 @@
       checkCollisions();
     });
 
-    // start / restart logic
     function startLevel(lv){
       level=lv; levelEl.textContent=level;
       time=30-(lv-1)*5; timerEl.textContent=time;
@@ -303,25 +285,25 @@
     harderBtn.onclick=()=>startLevel(level+1);
     muteBtn.onclick=()=>{ muted=!muted; muteBtn.textContent=muted?"🔇 Unmute":"🔊 Mute"; };
 
-    // bubble spawner
+    // bubble loop
     setInterval(()=>{ if(running) spawnBubble(); },2000);
 
-    // tile mover
+    // tile movement
     function moveTiles(){
       if(!running) return;
       const rect=board.getBoundingClientRect();
       tiles.forEach(t=>{
         let x=t.offsetLeft+t.vx;
         let y=t.offsetTop+t.vy;
-        if(x<=0 || x+60>=rect.width) t.vx*=-1;
-        if(y<=0 || y+60>=rect.height) t.vy*=-1;
+        if(x<=0||x+60>=rect.width) t.vx*=-1;
+        if(y<=0||y+60>=rect.height) t.vy*=-1;
         t.style.left=Math.max(0,Math.min(rect.width-60,x))+"px";
         t.style.top=Math.max(0,Math.min(rect.height-60,y))+"px";
       });
     }
     setInterval(moveTiles,30);
 
-    // initialize
+    // start game
     resetPlayer();
     startLevel(1);
   </script>
