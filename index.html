@@ -114,6 +114,7 @@
       <button id="harder">Harder pls</button>
     </div>
   </div>
+
   <script>
     const board=document.getElementById('board'),
       player=document.getElementById('player'),
@@ -132,6 +133,7 @@
     let dragging=false,offsetX=0,offsetY=0;
     let score=0,time=30,level=1,running=true,muted=false;
     let bubbles=[],tiles=[];
+    let pendingX=null, pendingY=null; // smooth drag
 
     const badHabits = [
       { img:"images/doomscroll.png", label:"Doomscrolling" },
@@ -191,6 +193,7 @@
       bubbles.push({el:b,bad:false});
       setTimeout(()=>{b.remove();bubbles=bubbles.filter(x=>x.el!==b)},5000);
     }
+
     function tick(){
       if(!running) return;
       time--; timerEl.textContent=time;
@@ -207,8 +210,6 @@
     function checkCollisions(){
       const pr=player.getBoundingClientRect(),
             gr=grass.getBoundingClientRect();
-
-      // win
       if(!(gr.right<pr.left||gr.left>pr.right||gr.bottom<pr.top||gr.top>pr.bottom)){
         running=false;
         overlay.style.display="flex";
@@ -217,8 +218,6 @@
         score+=10; scoreEl.textContent=score;
         beep(800,0.15);
       }
-
-      // bad tiles
       tiles.forEach(t=>{
         const tr=t.getBoundingClientRect();
         if(!(tr.right<pr.left||tr.left>pr.right||tr.bottom<pr.top||tr.top>pr.bottom)){
@@ -227,8 +226,6 @@
           beep(300,0.15);
         }
       });
-
-      // good bubbles
       bubbles.forEach(b=>{
         const brc=b.el.getBoundingClientRect();
         if(!(brc.right<pr.left||brc.left>pr.right||brc.bottom<pr.top||brc.top>pr.bottom)){
@@ -238,6 +235,17 @@
         }
       });
     }
+
+    // update player at 60fps
+    function updatePlayer(){
+      if(pendingX!==null && pendingY!==null){
+        player.style.left=pendingX+"px";
+        player.style.top=pendingY+"px";
+        checkCollisions();
+      }
+      requestAnimationFrame(updatePlayer);
+    }
+    requestAnimationFrame(updatePlayer);
 
     // mouse drag
     board.addEventListener("mousedown", e=>{
@@ -249,29 +257,28 @@
       let rect=board.getBoundingClientRect(),
           x=e.clientX-rect.left-offsetX,
           y=e.clientY-rect.top-offsetY;
-      player.style.left=Math.max(0,Math.min(rect.width-40,x))+"px";
-      player.style.top=Math.max(0,Math.min(rect.height-40,y))+"px";
-      checkCollisions();
+      pendingX=Math.max(0,Math.min(rect.width-40,x));
+      pendingY=Math.max(0,Math.min(rect.height-40,y));
     });
 
-    // touch drag
+    // touch drag (with preventDefault)
     player.addEventListener("touchstart", e=>{
+      e.preventDefault();
       dragging=true; const touch=e.touches[0];
       const rect=player.getBoundingClientRect();
-      offsetX=touch.clientX-rect.left;
-      offsetY=touch.clientY-rect.top;
-    });
+      offsetX=touch.clientX-rect.left; offsetY=touch.clientY-rect.top;
+    }, { passive:false });
     document.addEventListener("touchend",()=>dragging=false);
     document.addEventListener("touchmove",e=>{
       if(!dragging||!running) return;
+      e.preventDefault();
       const touch=e.touches[0];
       let rect=board.getBoundingClientRect(),
           x=touch.clientX-rect.left-offsetX,
           y=touch.clientY-rect.top-offsetY;
-      player.style.left=Math.max(0,Math.min(rect.width-40,x))+"px";
-      player.style.top=Math.max(0,Math.min(rect.height-40,y))+"px";
-      checkCollisions();
-    });
+      pendingX=Math.max(0,Math.min(rect.width-40,x));
+      pendingY=Math.max(0,Math.min(rect.height-40,y));
+    }, { passive:false });
 
     function startLevel(lv){
       level=lv; levelEl.textContent=level;
@@ -285,10 +292,8 @@
     harderBtn.onclick=()=>startLevel(level+1);
     muteBtn.onclick=()=>{ muted=!muted; muteBtn.textContent=muted?"🔇 Unmute":"🔊 Mute"; };
 
-    // bubble loop
     setInterval(()=>{ if(running) spawnBubble(); },2000);
 
-    // tile movement
     function moveTiles(){
       if(!running) return;
       const rect=board.getBoundingClientRect();
@@ -303,7 +308,6 @@
     }
     setInterval(moveTiles,30);
 
-    // start game
     resetPlayer();
     startLevel(1);
   </script>
