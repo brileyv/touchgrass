@@ -4,29 +4,25 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Touch Grass Simulator 🌱</title>
-<link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g fill='%2307c45f'><rect x='4' y='40' width='56' height='12' rx='3'/><rect x='10' y='32' width='44' height='10' rx='3'/></g></svg>">
 <style>
-  :root { --bg:#0b1220; --panel:#18243e; --text:#e9f0ff; --muted:#9fb0d1; --btn:#213152; }
-  * { box-sizing:border-box }
-  body { margin:0; font-family:system-ui,Segoe UI,Arial,sans-serif; background:var(--bg); color:var(--text);
-         min-height:100vh; display:flex; flex-direction:column; align-items:center; gap:8px; padding:10px; }
-  h1 { margin:.5rem 0 0 0 }
-  .hud { display:flex; gap:12px; align-items:center }
-  .hud button { background:var(--btn); color:var(--text); border:none; padding:6px 10px; border-radius:8px; cursor:pointer }
-  .board { width:min(92vw,520px); height:min(92vw,520px,520px); background:var(--panel); position:relative;
-           border-radius:14px; overflow:hidden; box-shadow:0 6px 24px rgba(0,0,0,.35) }
-  .player { position:absolute; left:20px; top:20px; width:48px; height:48px; }
-  .tile,.bubble { position:absolute; display:flex; flex-direction:column; align-items:center; text-align:center; }
-  .tile img,.bubble img { width:50px; height:50px; }
-  .tile span,.bubble span { font-size:11px; color:#fff; margin-top:2px }
-  .grass { position:absolute; right:0; bottom:0; width:110px; height:110px; }
-  .toast { position:absolute; top:10px; left:50%; transform:translateX(-50%); background:#111a2b; padding:8px 14px;
-           border-radius:8px; opacity:0; transition:opacity .25s }
-  .toast.show { opacity:1 }
-  .overlay { position:absolute; inset:0; background:rgba(0,0,0,.7); display:none; align-items:center; justify-content:center;
-             flex-direction:column; gap:8px; text-align:center; z-index:10; padding:10px }
-  .overlay h2 { margin:0 }
-  .overlay button { background:var(--btn); color:#fff; border:none; padding:8px 14px; border-radius:8px; cursor:pointer }
+  :root { --bg:#0b1220; --panel:#18243e; --text:#e9f0ff; --btn:#213152; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text);
+       min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px}
+  h1{margin:.5rem 0 0}
+  .hud{display:flex;gap:12px;align-items:center}
+  .hud button{background:var(--btn);color:var(--text);border:none;padding:6px 10px;border-radius:8px;cursor:pointer}
+  .board{width:min(92vw,520px);height:min(92vw,520px,520px);background:var(--panel);position:relative;border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+  .player{position:absolute;left:20px;top:20px;width:48px;height:48px}
+  .tile,.bubble{position:absolute;display:flex;flex-direction:column;align-items:center;text-align:center;pointer-events:none}
+  .tile img,.bubble img{width:50px;height:50px}
+  .tile span,.bubble span{font-size:11px;color:#fff;margin-top:2px}
+  .grass{position:absolute;right:0;bottom:0;width:100px;height:100px}
+  .toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#111a2b;padding:8px 14px;border-radius:8px;opacity:0;transition:opacity .25s}
+  .toast.show{opacity:1}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;flex-direction:column;gap:8px;text-align:center;z-index:10;padding:10px}
+  .overlay button{background:var(--btn);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer}
+  .stunned{filter:saturate(.6) brightness(.9)}
 </style>
 </head>
 <body>
@@ -42,11 +38,10 @@
     <div class="grass" id="grass"></div>
     <div class="player" id="player"></div>
     <div class="toast" id="toast"></div>
-
     <div class="overlay" id="overlay">
       <h2 id="end-title">Level Complete!</h2>
       <p id="end-desc">You touched grass!</p>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex;gap:8px">
         <button id="restart">Start Over</button>
         <button id="next">Next Level</button>
       </div>
@@ -54,361 +49,90 @@
   </div>
 
 <script>
-/* ---------- Tiny inline SVG sprites (data URLs) ---------- */
-const SPRITES = {
-  player:`data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-      <rect x='6' y='6' width='52' height='52' rx='10' fill='#3498db' stroke='#000' stroke-width='3'/>
-      <circle cx='26' cy='26' r='4' fill='#000'/>
-      <circle cx='38' cy='26' r='4' fill='#000'/>
-      <path d='M22 42 q10 8 20 0' fill='none' stroke='#000' stroke-width='3' stroke-linecap='round'/>
-    </svg>` )}`,
-  grass:`data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-      <rect width='64' height='20' y='44' fill='#0ea14b'/>
-      <g stroke='#0ea14b' stroke-width='4' stroke-linecap='round' fill='none'>
-        <path d='M8 60 L12 44'/><path d='M16 60 L20 44'/><path d='M24 60 L28 44'/>
-        <path d='M36 60 L40 44'/><path d='M44 60 L48 44'/><path d='M52 60 L56 44'/>
-      </g>
-    </svg>` )}`,
-  doom:`data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-      <rect x='16' y='6' width='32' height='52' rx='6' fill='#111' stroke='#bbb' stroke-width='3'/>
-      <rect x='21' y='14' width='22' height='30' rx='3' fill='#1e1e1e'/>
-      <path d='M23 18 h18 m-18 6 h18 m-18 6 h18 m-18 6 h14' stroke='#61dafb' stroke-width='3'/>
-    </svg>` )}`,
-  brain:`data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-      <path d='M20 18 a12 12 0 0 1 24 0 v0 a12 12 0 0 1 8 12 v4 a14 14 0 0 1 -14 14 h-12 a14 14 0 0 1 -14 -14 v-4 a12 12 0 0 1 8 -12z'
-            fill='#ff6fab' stroke='#b21e6b' stroke-width='3'/>
-      <path d='M26 18 v28 M38 18 v28' stroke='#b21e6b' stroke-width='3'/>
-    </svg>` )}`,
-  couch:`data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-      <rect x='8' y='28' width='48' height='16' rx='4' fill='#c66' stroke='#722' stroke-width='3'/>
-      <rect x='12' y='22' width='40' height='10' rx='4' fill='#e88' stroke='#722' stroke-width='3'/>
-      <rect x='10' y='44' width='44' height='6' rx='2' fill='#833'/>
-    </svg>` )}`,
-  vibe:`data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-      <polygon points='32,6 38,24 58,24 42,36 48,54 32,43 16,54 22,36 6,24 26,24'
-               fill='#ffd54a' stroke='#a47d00' stroke-width='3'/>
-      <text x='32' y='59' font-size='14' fill='#fff' text-anchor='middle' font-family='system-ui'>+1</text>
-    </svg>` )}`,
-  sprout:`data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-      <rect x='28' y='28' width='8' height='28' fill='#207d3a'/>
-      <ellipse cx='22' cy='24' rx='12' ry='8' fill='#2ecc71'/>
-      <ellipse cx='42' cy='18' rx='10' ry='7' fill='#2ecc71'/>
-    </svg>` )}`,
-  sun:`data:image/svg+xml;utf8,${encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
-      <circle cx='32' cy='32' r='12' fill='#ffd34a' stroke='#a47d00' stroke-width='3'/>
-      <g stroke='#ffd34a' stroke-width='4'>
-        <line x1='32' y1='6' x2='32' y2='16'/><line x1='32' y1='48' x2='32' y2='58'/>
-        <line x1='6' y1='32' x2='16' y2='32'/><line x1='48' y1='32' x2='58' y2='32'/>
-        <line x1='12' y1='12' x2='19' y2='19'/><line x1='52' y1='12' x2='45' y2='19'/>
-        <line x1='12' y1='52' x2='19' y2='45'/><line x1='52' y1='52' x2='45' y2='45'/>
-      </g>
-    </svg>` )}`
+/* -------- Inline SVG sprites -------- */
+const SPRITES={
+  player:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='6' y='6' width='52' height='52' rx='10' fill='#3498db' stroke='#000' stroke-width='3'/><circle cx='26' cy='26' r='4' fill='#000'/><circle cx='38' cy='26' r='4' fill='#000'/><path d='M22 42 q10 8 20 0' fill='none' stroke='#000' stroke-width='3' stroke-linecap='round'/></svg>`)}`,
+  grass:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='20' y='44' fill='#0ea14b'/><g stroke='#0ea14b' stroke-width='4' stroke-linecap='round' fill='none'><path d='M8 60 L12 44'/><path d='M16 60 L20 44'/><path d='M24 60 L28 44'/><path d='M36 60 L40 44'/><path d='M44 60 L48 44'/><path d='M52 60 L56 44'/></g></svg>`)}`,
+  doom:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='16' y='6' width='32' height='52' rx='6' fill='#111' stroke='#bbb' stroke-width='3'/><rect x='21' y='14' width='22' height='30' rx='3' fill='#1e1e1e'/><path d='M23 18 h18 m-18 6 h18 m-18 6 h18 m-18 6 h14' stroke='#61dafb' stroke-width='3'/></svg>`)}`,
+  brain:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><path d='M20 18 a12 12 0 0 1 24 0 v0 a12 12 0 0 1 8 12 v4 a14 14 0 0 1 -14 14 h-12 a14 14 0 0 1 -14 -14 v-4 a12 12 0 0 1 8 -12z' fill='#ff6fab' stroke='#b21e6b' stroke-width='3'/><path d='M26 18 v28 M38 18 v28' stroke='#b21e6b' stroke-width='3'/></svg>`)}`,
+  couch:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='8' y='28' width='48' height='16' rx='4' fill='#c66' stroke='#722' stroke-width='3'/><rect x='12' y='22' width='40' height='10' rx='4' fill='#e88' stroke='#722' stroke-width='3'/><rect x='10' y='44' width='44' height='6' rx='2' fill='#833'/></svg>`)}`,
+  vibe:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><polygon points='32,6 38,24 58,24 42,36 48,54 32,43 16,54 22,36 6,24 26,24' fill='#ffd54a' stroke='#a47d00' stroke-width='3'/><text x='32' y='59' font-size='14' fill='#fff' text-anchor='middle' font-family='system-ui'>+1</text></svg>`)}`,
+  sprout:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='28' y='28' width='8' height='28' fill='#207d3a'/><ellipse cx='22' cy='24' rx='12' ry='8' fill='#2ecc71'/><ellipse cx='42' cy='18' rx='10' ry='7' fill='#2ecc71'/></svg>`)}`,
+  sun:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='12' fill='#ffd34a' stroke='#a47d00' stroke-width='3'/><g stroke='#ffd34a' stroke-width='4'><line x1='32' y1='6' x2='32' y2='16'/><line x1='32' y1='48' x2='32' y2='58'/><line x1='6' y1='32' x2='16' y2='32'/><line x1='48' y1='32' x2='58' y2='32'/><line x1='12' y1='12' x2='19' y2='19'/><line x1='52' y1='12' x2='45' y2='19'/><line x1='12' y1='52' x2='19' y2='45'/><line x1='52' y1='52' x2='45' y2='45'/></g></svg>`)}`
 };
 
-/* ---------- DOM refs ---------- */
-const board   = document.getElementById('board');
-const player  = document.getElementById('player');
-const grass   = document.getElementById('grass');
-const toast   = document.getElementById('toast');
-const overlay = document.getElementById('overlay');
-const endTitle= document.getElementById('end-title');
-const endDesc = document.getElementById('end-desc');
-const restartBtn = document.getElementById('restart');
-const nextBtn    = document.getElementById('next');
-const muteBtn    = document.getElementById('mute');
-const scoreEl    = document.getElementById('score');
-const timerEl    = document.getElementById('timer');
-const levelEl    = document.getElementById('level');
+/* -------- DOM refs -------- */
+const board=document.getElementById('board');
+const player=document.getElementById('player');
+const grass=document.getElementById('grass');
+const toast=document.getElementById('toast');
+const overlay=document.getElementById('overlay');
+const endTitle=document.getElementById('end-title');
+const endDesc=document.getElementById('end-desc');
+const restartBtn=document.getElementById('restart');
+const nextBtn=document.getElementById('next');
+const muteBtn=document.getElementById('mute');
+const scoreEl=document.getElementById('score');
+const timerEl=document.getElementById('timer');
+const levelEl=document.getElementById('level');
 
-/* ---------- State ---------- */
-let dragging=false, offsetX=0, offsetY=0;
-let score=0, time=30, level=1, running=true, muted=false;
-let bubbles=[], tiles=[];
-let pendingX=20, pendingY=20;
+/* -------- State -------- */
+let dragging=false,offsetX=0,offsetY=0;
+let score=0,time=30,level=1,running=true,muted=false;
+let bubbles=[],tiles=[];
+let pendingX=20,pendingY=20,lastX=20,lastY=20;
+let stunnedUntil=0;
 
-/* ---------- Sprite placement ---------- */
-grass.innerHTML = `<img alt="grass" src="${SPRITES.grass}" style="width:100%;height:100%;">`;
-player.innerHTML= `<img alt="player" src="${SPRITES.player}" style="width:100%;height:100%;">`;
+/* -------- Place sprites -------- */
+grass.innerHTML=`<img alt="grass" src="${SPRITES.grass}" style="width:100%;height:100%">`;
+player.innerHTML=`<img alt="player" src="${SPRITES.player}" style="width:100%;height:100%">`;
 
-/* ---------- Content pools ---------- */
-const badHabits = [
-  { img: SPRITES.doom,  label: "Doomscrolling" },
-  { img: SPRITES.brain, label: "Brain Rot" },
-  { img: SPRITES.couch, label: "Procrastinate" },
-];
-const goodVibes = [
-  { img: SPRITES.vibe,   label: "Vibe+1" },
-  { img: SPRITES.sprout, label: "Grass Power" },
-  { img: SPRITES.sun,    label: "Vitamin D" },
-];
+/* -------- Pools -------- */
+const badHabits=[{img:SPRITES.doom,label:"Doomscrolling"},{img:SPRITES.brain,label:"Brain Rot"},{img:SPRITES.couch,label:"Procrastinate"}];
+const goodVibes=[{img:SPRITES.vibe,label:"Vibe+1"},{img:SPRITES.sprout,label:"Grass Power"},{img:SPRITES.sun,label:"Vitamin D"}];
+const rageTile=["🔥 Back to spawn, bot.","💀 NPC detected.","📉 Skill issue…"];
+const rageTime=["⌛ Ran out of time, doomscroller.","😭 Couldn't even touch grass."];
+const winMsgs=["🌱 Fresh air unlocked!","✨ Your sanity +10."];
 
-const rageTile = ["🔥 Back to spawn, bot.", "💀 NPC detected.", "📉 Skill issue…"];
-const rageTime = ["⌛ Ran out of time, doomscroller.", "😭 Couldn't even touch grass."];
-const winMsgs  = ["🌱 Fresh air unlocked!", "✨ Your sanity +10."];
+/* -------- Audio (simple) -------- */
+let audioCtx=null,musicStarted=false;
+function ensureAudio(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
+function beep(freq=440,dur=0.1){ if(muted) return; ensureAudio(); const t0=audioCtx.currentTime; const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type='square'; o.frequency.value=freq; g.gain.value=0.05; g.gain.exponentialRampToValueAtTime(0.0001,t0+dur); o.connect(g).connect(audioCtx.destination); o.start(t0); o.stop(t0+dur); }
+function startMusic(){ if(musicStarted||muted) return; ensureAudio(); musicStarted=true; const tempo=120,beat=60/tempo,root=261.63,notes=[root,root*1.2599,root*1.4983,root*1.2599]; function bar(){ const t0=audioCtx.currentTime; notes.forEach((f,i)=>{ const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type='square'; o.frequency.value=f; g.gain.value=0.04; g.gain.setValueAtTime(0.04,t0+i*beat); g.gain.exponentialRampToValueAtTime(0.0001,t0+i*beat+0.2); o.connect(g).connect(audioCtx.destination); o.start(t0+i*beat); o.stop(t0+i*beat+0.25); }); } setInterval(()=>{ if(!muted) bar(); },1000); bar(); }
 
-/* ---------- SFX + Music (WebAudio) ---------- */
-let audioCtx=null, musicStarted=false;
+/* -------- Helpers -------- */
+function showToast(m){ toast.textContent=m; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),900); }
+function resetPlayer(){ pendingX=20;pendingY=20;lastX=20;lastY=20;player.style.left="20px";player.style.top="20px";stunnedUntil=performance.now()+350;player.classList.add('stunned');setTimeout(()=>player.classList.remove('stunned'),350); }
 
-function ensureAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-}
+/* -------- Spawners -------- */
+function spawnTile(speedBase){ const d=badHabits[Math.random()*badHabits.length|0]; const el=document.createElement('div'); el.className='tile'; el.style.left=(60+Math.random()*350)+'px'; el.style.top=(20+Math.random()*350)+'px'; el.innerHTML=`<img src="${d.img}" alt=""><span>${d.label}</span>`; board.appendChild(el); const ang=Math.random()*Math.PI*2; const sp=speedBase*(0.85+Math.random()*0.3); el.vx=Math.cos(ang)*sp; el.vy=Math.sin(ang)*sp; tiles.push(el); }
+function spawnBubble(){ const d=goodVibes[Math.random()*goodVibes.length|0]; const b=document.createElement('div'); b.className='bubble'; b.style.left=(Math.random()*400)+'px'; b.style.top=(Math.random()*400)+'px'; b.innerHTML=`<img src="${d.img}" alt=""><span>${d.label}</span>`; board.appendChild(b); bubbles.push({el:b}); setTimeout(()=>{b.remove();bubbles=bubbles.filter(x=>x.el!==b)},4500); }
 
-function beep(freq=440, dur=0.1){
-  if (muted) return;
-  ensureAudio();
-  const t0 = audioCtx.currentTime;
-  const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.type = 'square'; o.frequency.setValueAtTime(freq, t0);
-  g.gain.setValueAtTime(0.05, t0);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0+dur);
-  o.connect(g).connect(audioCtx.destination);
-  o.start(t0); o.stop(t0+dur);
-}
+/* -------- Timer -------- */
+let tickId=setInterval(()=>{},1000);
+function startTimer(){ clearInterval(tickId); tickId=setInterval(tick,1000); }
+function tick(){ if(!running) return; time--; timerEl.textContent=time; if(time<=0) gameOver(false); }
 
-/* Simple cheerful 8-bit loop (C–E–G–E) with bass pulse */
-function startMusic(){
-  if (musicStarted || muted) return;
-  ensureAudio();
-  musicStarted = true;
+/* -------- Collisions -------- */
+function rectsOverlap(a,b){ return !(b.right<a.left||b.left>a.right||b.bottom<a.top||b.top>a.bottom); }
+function checkCollisions(){ if(!running) return; const pr=player.getBoundingClientRect(),gr=grass.getBoundingClientRect(); const px=pr.left+pr.width/2,py=pr.top+pr.height/2; if(px>gr.left&&px<gr.right&&py>gr.top&&py<gr.bottom){ gameOver(true);return;} for(const t of tiles){ if(rectsOverlap(pr,t.getBoundingClientRect())){ resetPlayer(); showToast(rageTile[Math.random()*rageTile.length|0]); beep(300,0.12); break; } } for(const b of bubbles){ if(rectsOverlap(pr,b.el.getBoundingClientRect())){ score++; scoreEl.textContent=score; showToast("✨ "+b.el.innerText); beep(620,0.1); } } }
 
-  const tempo = 120;                // BPM
-  const beat  = 60/tempo;           // seconds per beat
-  const root  = 261.63;             // C4
-  const notes = [root, root*1.2599, root*1.4983, root*1.2599]; // C E G E
-
-  function scheduleBar() {
-    const t0 = audioCtx.currentTime;
-    // Melody
-    notes.forEach((f, i)=>{
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type='square'; o.frequency.value=f;
-      g.gain.value=0.04;
-      g.gain.setValueAtTime(0.04, t0 + i*beat);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + i*beat + 0.2);
-      o.connect(g).connect(audioCtx.destination);
-      o.start(t0 + i*beat);
-      o.stop (t0 + i*beat + 0.25);
-    });
-    // Bass pulse on beats
-    for (let i=0;i<4;i++){
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type='triangle'; o.frequency.value = root/2; // C3
-      g.gain.value=0.03;
-      g.gain.setValueAtTime(0.03, t0 + i*beat);
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + i*beat + 0.18);
-      o.connect(g).connect(audioCtx.destination);
-      o.start(t0 + i*beat);
-      o.stop (t0 + i*beat + 0.22);
-    }
-  }
-  // schedule continuously
-  setInterval(()=>{ if(!muted) scheduleBar(); }, 1000); // ~every bar
-  scheduleBar();
-}
-
-/* ---------- UI helpers ---------- */
-function showToast(m){
-  toast.textContent=m;
-  toast.classList.add('show');
-  setTimeout(()=>toast.classList.remove('show'), 900);
-}
-
-function resetPlayer(){
-  pendingX=20; pendingY=20;
-  player.style.left="20px";
-  player.style.top ="20px";
-}
-
-/* ---------- Spawners ---------- */
-function spawnTile(){
-  const data = badHabits[Math.floor(Math.random()*badHabits.length)];
-  const el = document.createElement('div');
-  el.className='tile';
-  el.style.left=(60+Math.random()*350)+'px';
-  el.style.top =(20+Math.random()*350)+'px';
-  el.innerHTML = `<img src="${data.img}" alt=""><span>${data.label}</span>`;
-  board.appendChild(el);
-  el.vx=(Math.random()<0.5?-1:1)*(2+level);
-  el.vy=(Math.random()<0.5?-1:1)*(2+level);
-  tiles.push(el);
-}
-
-function spawnBubble(){
-  const data = goodVibes[Math.floor(Math.random()*goodVibes.length)];
-  const b = document.createElement('div');
-  b.className='bubble';
-  b.style.left=(Math.random()*400)+'px';
-  b.style.top =(Math.random()*400)+'px';
-  b.innerHTML = `<img src="${data.img}" alt=""><span>${data.label}</span>`;
-  board.appendChild(b);
-  bubbles.push({el:b});
-  setTimeout(()=>{ b.remove(); bubbles = bubbles.filter(x=>x.el!==b); }, 4500);
-}
-
-/* ---------- Game loop bits ---------- */
-function tick(){
-  if(!running) return;
-  time--; timerEl.textContent=time;
-  if(time<=0) gameOver(false);
-}
-setInterval(tick, 1000);
-
-function checkCollisions(){
-  if(!running) return;
-  const pr = player.getBoundingClientRect();
-  const gr = grass.getBoundingClientRect();
-  const px = pr.left + pr.width/2;
-  const py = pr.top  + pr.height/2;
-
-  // Win if player's center is inside grass
-  if (px>gr.left && px<gr.right && py>gr.top && py<gr.bottom){
-    gameOver(true);
-    return;
-  }
-
-  // Bad tiles collide -> reset
-  tiles.forEach(t=>{
-    const tr=t.getBoundingClientRect();
-    if(!(tr.right<pr.left || tr.left>pr.right || tr.bottom<pr.top || tr.top>pr.bottom)){
-      resetPlayer();
-      showToast(rageTile[Math.floor(Math.random()*rageTile.length)]);
-      beep(300,0.12);
-    }
-  });
-
-  // Good vibes
-  bubbles.forEach(b=>{
-    const br=b.el.getBoundingClientRect();
-    if(!(br.right<pr.left || br.left>pr.right || br.bottom<pr.top || br.top>pr.bottom)){
-      score++; scoreEl.textContent=score;
-      showToast("✨ "+b.el.innerText);
-      beep(620,0.1);
-    }
-  });
-}
-
-function gameOver(won){
-  running=false;
-  overlay.style.display='flex';
-  if (won){
-    endTitle.textContent = `Level ${level} Complete!`;
-    endDesc.textContent  = winMsgs[Math.floor(Math.random()*winMsgs.length)];
-    nextBtn.style.display='inline-block';
-    score+=10; scoreEl.textContent=score; beep(800,0.15);
-  } else {
-    endTitle.textContent = "Game Over";
-    endDesc.textContent  = rageTime[Math.floor(Math.random()*rageTime.length)];
-    nextBtn.style.display='none';
-    beep(200,0.15);
-  }
-}
-
-/* Smooth drag @ 60fps */
-function updatePlayer(){
-  if(pendingX!=null && pendingY!=null){
-    player.style.left=pendingX+'px';
-    player.style.top =pendingY+'px';
-    checkCollisions();
-  }
+/* -------- Movement -------- */
+const MAX_STEP=12;
+function updatePlayer(){ const now=performance.now(); if(now<stunnedUntil){ requestAnimationFrame(updatePlayer); return; }
+  // move tiles
+  if(running){ const rect=board.getBoundingClientRect(); tiles.forEach(t=>{ let x=t.offsetLeft+t.vx,y=t.offsetTop+t.vy; if(x<=0||x+60>=rect.width) t.vx*=-1; if(y<=0||y+60>=rect.height) t.vy*=-1; t.style.left=Math.max(0,Math.min(rect.width-60,x))+'px'; t.style.top=Math.max(0,Math.min(rect.height-60,y))+'px'; }); }
+  // player swept move
+  let dx=pendingX-lastX,dy=pendingY-lastY,dist=Math.hypot(dx,dy); let steps=Math.max(1,Math.ceil(dist/MAX_STEP)); for(let i=0;i<steps;i++){ lastX+=dx/steps; lastY+=dy/steps; player.style.left=lastX+'px'; player.style.top=lastY+'px'; checkCollisions(); if(performance.now()<stunnedUntil) break; }
   requestAnimationFrame(updatePlayer);
 }
 requestAnimationFrame(updatePlayer);
 
-/* Move tiles */
-function moveTiles(){
-  if(!running) return;
-  const rect=board.getBoundingClientRect();
-  tiles.forEach(t=>{
-    let x=t.offsetLeft+t.vx, y=t.offsetTop+t.vy;
-    if(x<=0 || x+60>=rect.width)  t.vx*=-1;
-    if(y<=0 || y+60>=rect.height) t.vy*=-1;
-    t.style.left = Math.max(0,Math.min(rect.width -60, x))+'px';
-    t.style.top  = Math.max(0,Math.min(rect.height-60, y))+'px';
-  });
-}
-setInterval(moveTiles, 30);
-
-/* ---------- Controls ---------- */
-// Start music on first interaction
+/* -------- Controls -------- */
 function primeAudio(){ startMusic(); }
-
-board.addEventListener('mousedown', e=>{
-  dragging=true; offsetX=e.offsetX; offsetY=e.offsetY; primeAudio();
-});
-document.addEventListener('mouseup', ()=>dragging=false);
-document.addEventListener('mousemove', e=>{
-  if(!dragging||!running) return;
-  const rect=board.getBoundingClientRect();
-  const x=e.clientX-rect.left-offsetX;
-  const y=e.clientY-rect.top -offsetY;
-  pendingX=Math.max(0,Math.min(rect.width -40, x));
-  pendingY=Math.max(0,Math.min(rect.height-40, y));
-});
-
-player.addEventListener('touchstart', e=>{
-  e.preventDefault(); primeAudio();
-  dragging=true; const t=e.touches[0];
-  const r=player.getBoundingClientRect();
-  offsetX=t.clientX-r.left; offsetY=t.clientY-r.top;
-},{passive:false});
-document.addEventListener('touchend', ()=>dragging=false);
-document.addEventListener('touchmove', e=>{
-  if(!dragging||!running) return;
-  e.preventDefault();
-  const t=e.touches[0], rect=board.getBoundingClientRect();
-  const x=t.clientX-rect.left-offsetX;
-  const y=t.clientY-rect.top -offsetY;
-  pendingX=Math.max(0,Math.min(rect.width -40, x));
-  pendingY=Math.max(0,Math.min(rect.height-40, y));
-},{passive:false});
-
-/* ---------- Leveling ---------- */
-function startLevel(lv){
-  level=lv; levelEl.textContent=level;
-  time=Math.max(10, 30-(lv-1)*3); timerEl.textContent=time;
-
-  // clear old actors
-  tiles.forEach(t=>t.remove()); tiles=[];
-  bubbles.forEach(b=>b.el.remove()); bubbles=[];
-  // spawn tiles (more each level)
-  for(let i=0;i<lv+1;i++) spawnTile();
-
-  running=true;
-  overlay.style.display='none';
-  resetPlayer();
-}
-
-restartBtn.onclick = ()=>{
-  overlay.style.display='none';
-  level=1; score=0; scoreEl.textContent=0;
-  startLevel(1);
-};
-nextBtn.onclick = ()=>{
-  overlay.style.display='none';
-  startLevel(level+1);
-};
-
-muteBtn.onclick = ()=>{
-  muted=!muted;
-  muteBtn.textContent = muted ? "🔇 Unmute" : "🔊 Mute";
-  if (audioCtx && audioCtx.state==='running' && muted){
-    // no global stop: new sounds won't play while muted
-  }
-};
-
-/* ---------- Boot ---------- */
-startLevel(1);
-</script>
-</body>
-</html>
+board.addEventListener('mousedown',e=>{dragging=true;offsetX=e.offsetX;offsetY=e.offsetY;primeAudio();});
+document.addEventListener('mouseup',()=>dragging=false);
+document.addEventListener('mousemove',e=>{ if(!dragging||!running)return;const r=board.getBoundingClientRect();pendingX=Math.max(0,Math.min(r.width-40,e.clientX-r.left-offsetX));pendingY=Math.max(0,Math.min(r.height-40,e.clientY-r.top-offsetY));});
+player.addEventListener('touchstart',e=>{e.preventDefault();primeAudio();dragging=true;const t=e.touches[0],r=player.getBoundingClientRect();offsetX=t.clientX-r.left;offsetY=t.clientY-r.top;},{passive:false});
+document.addEventListener('touchend',()=>dragging=false);
+document.addEventListener('touchmove',
