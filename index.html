@@ -128,6 +128,7 @@
       <button id="harder">Harder pls</button>
     </div>
   </div>
+
   <script>
     const board=document.getElementById('board'),
       player=document.getElementById('player'),
@@ -178,6 +179,11 @@
       t.style.left=(60+Math.random()*350)+"px";
       t.style.top=(20+Math.random()*350)+"px";
       board.appendChild(t);
+
+      // give velocity
+      t.vx = (Math.random()<0.5?-1:1)*(2+level);
+      t.vy = (Math.random()<0.5?-1:1)*(2+level);
+
       tiles.push(t);
     }
 
@@ -206,6 +212,7 @@
       }
     }
     setInterval(tick,1000);
+
     // check collisions for win / tiles / bubbles
     function checkCollisions(){
       const pr=player.getBoundingClientRect(),
@@ -248,8 +255,8 @@
       });
     }
 
-    // dragging controls
-    board.addEventListener("mousedown",e=>{
+    // dragging controls (mouse)
+    board.addEventListener("mousedown", e=>{
       dragging=true; offsetX=e.offsetX; offsetY=e.offsetY;
     });
     document.addEventListener("mouseup",()=>dragging=false);
@@ -258,6 +265,26 @@
       let rect=board.getBoundingClientRect(),
           x=e.clientX-rect.left-offsetX,
           y=e.clientY-rect.top-offsetY;
+      player.style.left=Math.max(0,Math.min(rect.width-40,x))+"px";
+      player.style.top=Math.max(0,Math.min(rect.height-40,y))+"px";
+      checkCollisions();
+    });
+
+    // dragging controls (touch)
+    player.addEventListener("touchstart", e=>{
+      dragging=true;
+      const touch=e.touches[0];
+      const rect=player.getBoundingClientRect();
+      offsetX=touch.clientX-rect.left;
+      offsetY=touch.clientY-rect.top;
+    });
+    document.addEventListener("touchend",()=>dragging=false);
+    document.addEventListener("touchmove",e=>{
+      if(!dragging||!running) return;
+      const touch=e.touches[0];
+      let rect=board.getBoundingClientRect(),
+          x=touch.clientX-rect.left-offsetX,
+          y=touch.clientY-rect.top-offsetY;
       player.style.left=Math.max(0,Math.min(rect.width-40,x))+"px";
       player.style.top=Math.max(0,Math.min(rect.height-40,y))+"px";
       checkCollisions();
@@ -278,6 +305,21 @@
 
     // bubble spawner
     setInterval(()=>{ if(running) spawnBubble(); },2000);
+
+    // tile mover
+    function moveTiles(){
+      if(!running) return;
+      const rect=board.getBoundingClientRect();
+      tiles.forEach(t=>{
+        let x=t.offsetLeft+t.vx;
+        let y=t.offsetTop+t.vy;
+        if(x<=0 || x+60>=rect.width) t.vx*=-1;
+        if(y<=0 || y+60>=rect.height) t.vy*=-1;
+        t.style.left=Math.max(0,Math.min(rect.width-60,x))+"px";
+        t.style.top=Math.max(0,Math.min(rect.height-60,y))+"px";
+      });
+    }
+    setInterval(moveTiles,30);
 
     // initialize
     resetPlayer();
