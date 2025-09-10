@@ -163,7 +163,13 @@
       toast.classList.add('show');
       setTimeout(()=>toast.classList.remove('show'),1000);
     }
-    function resetPlayer(){ player.style.left="20px"; player.style.top="20px"; }
+
+    function resetPlayer(){
+      pendingX = 20;
+      pendingY = 20;
+      player.style.left="20px";
+      player.style.top="20px";
+    }
 
     function spawnTile(){
       const data = badHabits[Math.floor(Math.random()*badHabits.length)];
@@ -208,6 +214,8 @@
     setInterval(tick,1000);
 
     function checkCollisions(){
+      if(!running) return;  // ✅ prevents flashing after game ends
+
       const pr=player.getBoundingClientRect(),
             gr=grass.getBoundingClientRect();
       if(!(gr.right<pr.left||gr.left>pr.right||gr.bottom<pr.top||gr.top>pr.bottom)){
