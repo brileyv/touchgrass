@@ -1,54 +1,116 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Touch Grass Tiles</title>
-<style>
-  body { font-family: sans-serif; margin: 20px; background:#0b1220; color:white; }
-  .board { width: 300px; height: 300px; background:#123; position:relative; }
-  .player { position:absolute; left:10px; top:10px; width:32px; height:32px; }
-  .grass { position:absolute; right:0; bottom:0; width:100px; height:100px; background:green; }
-  .tile { position:absolute; width:50px; height:50px; background:red; opacity:0.7; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Touch Grass Simulator 🌱</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+
+  <style>
+    :root { --bg:#0b1220; --panel:#111a2b; --text:#e9f0ff; --muted:#9fb0d1; --accent:#7cffa3; }
+    body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--text);
+      display:flex; flex-direction:column; align-items:center; min-height:100vh; padding:10px; }
+    h1{margin:.5em 0;}
+    .board{width:90%;max-width:500px;height:500px;background:#18243e;position:relative;border-radius:12px;overflow:hidden}
+    .grass{position:absolute;right:0;bottom:0;width:120px;height:120px;background:green}
+    .player{position:absolute;left:20px;top:20px;width:48px;height:64px;cursor:grab;user-select:none}
+    .player img{width:100%;height:100%;object-fit:contain}
+    .tile{position:absolute;width:60px;height:60px;background:red;opacity:.7}
+    .bubble{position:absolute;padding:6px 10px;border-radius:12px;font-size:12px;color:#fff;pointer-events:none;opacity:.9}
+    .bubble.bad{background:#b22}.bubble.good{background:#2a4}
+    .hud{margin:10px 0}
+    .toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#111a2b;
+      padding:8px 14px;border-radius:8px;opacity:0;transition:opacity .3s}
+    .toast.show{opacity:1}
+    .overlay{position:absolute;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;flex-direction:column;color:white;text-align:center}
+    .overlay button{margin:6px;padding:8px 14px;border:none;border-radius:6px;background:#213152;color:white;cursor:pointer}
+  </style>
 </head>
 <body>
-<h1>Touch Grass Simulator 🌱 (Tiles)</h1>
-<p>Drag the person to the grass without hitting red tiles.</p>
-<div class="board" id="board">
-  <img class="player" id="player" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAOa0w/8AAAAASUVORK5CYII=">
-  <div class="grass" id="grass"></div>
-  <div class="tile" style="left:100px;top:50px"></div>
-  <div class="tile" style="left:200px;top:150px"></div>
-</div>
-<script>
-let player = document.getElementById('player');
-let board = document.getElementById('board');
-let grass = document.getElementById('grass');
-let dragging=false, offsetX=0, offsetY=0;
-player.onmousedown = e => { dragging=true; offsetX=e.offsetX; offsetY=e.offsetY; };
-document.onmouseup = e => dragging=false;
-document.onmousemove = e => {
-  if(!dragging) return;
-  let rect = board.getBoundingClientRect();
-  let x = e.clientX - rect.left - offsetX;
-  let y = e.clientY - rect.top - offsetY;
-  player.style.left = x+'px'; player.style.top=y+'px';
-  // collision with tiles
-  document.querySelectorAll('.tile').forEach(t=>{
-    let tr=t.getBoundingClientRect(), pr=player.getBoundingClientRect();
-    if(!(tr.right<pr.left||tr.left>pr.right||tr.bottom<pr.top||tr.top>pr.bottom)) {
-      player.style.left='10px'; player.style.top='10px';
-      alert("🔥 Hit a tile! Back to start");
-    }
-  });
-  // win check
-  let gr=grass.getBoundingClientRect(), pr=player.getBoundingClientRect();
-  if(!(gr.right<pr.left||gr.left>pr.right||gr.bottom<pr.top||gr.top>pr.bottom)) {
-    alert("🌱 You touched grass!");
-    dragging=false;
-  }
-};
-</script>
+  <h1>Touch Grass Simulator 🌱</h1>
+  <div class="hud">
+    <span>Score: <span id="score">0</span></span> |
+    <span>Time: <span id="timer">30</span>s</span> |
+    <span>Level: <span id="level">1</span></span>
+    <button id="mute">🔊 Mute</button>
+  </div>
+
+  <div class="board" id="board">
+    <div class="grass" id="grass"></div>
+    <div class="player" id="player">
+      <!-- Cartoon player as inline SVG -->
+      <img src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA2NCA4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMzIiIGN5PSIxNCIgcj0iMTQiIGZpbGw9IiNmZWRjYmEiIHN0cm9rZT0iYmxhY2siLz4KPGxpbmUgeDE9IjMyIiB5MT0iMjgiIHgyPSIzMiIgeTI9IjUwIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz4KPGxpbmUgeDE9IjE2IiB5MT0iMzYiIHgyPSI0OCIgeTI9IjM2IiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz4KPGxpbmUgeDE9IjMyIiB5MT0iNTAiIHgyPSIyMCIgeTI9IjcwIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz4KPGxpbmUgeDE9IjMyIiB5MT0iNTAiIHgyPSI0NCIgeTI9IjcwIiBzdHJva2U9ImJsYWNrIiBzdHJva2Utd2lkdGg9IjIiLz4KPGNpcmNsZSBjeD0iMzIiIGN5PSIzMCIgcj0iMTAiIGZpbGw9ImJsdWUiLz4KPC9zdmc+" />
+    </div>
+    <div class="toast" id="toast"></div>
+    <div class="overlay" id="overlay">
+      <h2 id="end-title">You touched grass!</h2>
+      <p id="end-desc">Fresh air acquired. +1 sanity.</p>
+      <button id="again">Play Again</button>
+      <button id="harder">Harder pls</button>
+    </div>
+  </div>
+
+  <script>
+    const board=document.getElementById('board'),player=document.getElementById('player'),
+      grass=document.getElementById('grass'),toast=document.getElementById('toast'),
+      overlay=document.getElementById('overlay'),endTitle=document.getElementById('end-title'),
+      endDesc=document.getElementById('end-desc'),againBtn=document.getElementById('again'),
+      harderBtn=document.getElementById('harder'),muteBtn=document.getElementById('mute'),
+      scoreEl=document.getElementById('score'),timerEl=document.getElementById('timer'),
+      levelEl=document.getElementById('level');
+
+    let dragging=false,offsetX=0,offsetY=0,score=0,time=30,level=1,running=true,muted=false;
+    let bubbles=[],tiles=[];
+    const rageTile=["🔥 Back to spawn, bot.","💀 NPC detected.","📉 Skill issue…"];
+    const rageTime=["⌛ Ran out of time, doomscroller.","😭 Couldn't even touch grass."];
+    const winMsgs=["🌱 You actually touched grass, wow.","✨ Fresh air unlocked."];
+
+    function beep(f=440,d=0.1){if(muted)return;const c=new(AudioContext||webkitAudioContext)();
+      const o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);
+      o.frequency.value=f;o.type="sine";g.gain.value=0.05;o.start();o.stop(c.currentTime+d);}
+    function showToast(m){toast.textContent=m;toast.classList.add('show');
+      setTimeout(()=>toast.classList.remove('show'),1000);}
+    function resetPlayer(){player.style.left="20px";player.style.top="20px";}
+    function spawnTile(){const t=document.createElement('div');t.className="tile";
+      t.style.left=(60+Math.random()*350)+"px";t.style.top=(20+Math.random()*350)+"px";
+      board.appendChild(t);tiles.push(t);}
+    function spawnBubble(){const b=document.createElement('div');const bad=Math.random()<0.6;
+      b.className="bubble "+(bad?"bad":"good");b.textContent=bad?"NPC":"Vibe+1";
+      b.style.left=(Math.random()*400)+"px";b.style.top=(Math.random()*400)+"px";
+      board.appendChild(b);bubbles.push({el:b,bad});
+      setTimeout(()=>{b.remove();bubbles=bubbles.filter(x=>x.el!==b)},5000);}
+    function tick(){if(!running)return;time--;timerEl.textContent=time;
+      if(time<=0){running=false;overlay.style.display="flex";
+        endTitle.textContent="Game Over";endDesc.textContent=rageTime[Math.floor(Math.random()*rageTime.length)];
+        beep(200,0.2);}}
+    setInterval(tick,1000);
+    function checkCollisions(){const pr=player.getBoundingClientRect(),
+      gr=grass.getBoundingClientRect();
+      if(!(gr.right<pr.left||gr.left>pr.right||gr.bottom<pr.top||gr.top>pr.bottom)){
+        running=false;overlay.style.display="flex";endTitle.textContent="You touched grass!";
+        endDesc.textContent=winMsgs[Math.floor(Math.random()*winMsgs.length)];
+        score+=10;scoreEl.textContent=score;beep(800,0.15);}
+      tiles.forEach(t=>{const tr=t.getBoundingClientRect();
+        if(!(tr.right<pr.left||tr.left>pr.right||tr.bottom<pr.top||tr.top>pr.bottom)){
+          resetPlayer();showToast(rageTile[Math.floor(Math.random()*rageTile.length)]);beep(300,0.15);}});
+      bubbles.forEach(b=>{const brc=b.el.getBoundingClientRect();
+        if(!(brc.right<pr.left||brc.left>pr.right||brc.bottom<pr.top||brc.top>pr.bottom)){
+          if(b.bad){player.style.left=(parseInt(player.style.left)-20)+"px";showToast("😵 Bumped!");beep(250,0.1);}
+          else{score++;scoreEl.textContent=score;showToast("✨ +1 vibe");beep(600,0.1);}}});}
+    board.addEventListener("mousedown",e=>{dragging=true;offsetX=e.offsetX;offsetY=e.offsetY;});
+    document.addEventListener("mouseup",()=>dragging=false);
+    document.addEventListener("mousemove",e=>{if(!dragging||!running)return;
+      let rect=board.getBoundingClientRect(),x=e.clientX-rect.left-offsetX,y=e.clientY-rect.top-offsetY;
+      player.style.left=Math.max(0,Math.min(rect.width-40,x))+"px";
+      player.style.top=Math.max(0,Math.min(rect.height-40,y))+"px";checkCollisions();});
+    function startLevel(lv){level=lv;levelEl.textContent=level;time=30-(lv-1)*5;timerEl.textContent=time;
+      tiles.forEach(t=>t.remove());tiles=[];for(let i=0;i<lv+1;i++)spawnTile();
+      running=true;overlay.style.display="none";}
+    againBtn.onclick=()=>startLevel(level);
+    harderBtn.onclick=()=>startLevel(level+1);
+    muteBtn.onclick=()=>{muted=!muted;muteBtn.textContent=muted?"🔇 Unmute":"🔊 Mute";};
+    setInterval(()=>{if(running)spawnBubble();},2000);
+    resetPlayer();startLevel(1);
+  </script>
 </body>
 </html>
