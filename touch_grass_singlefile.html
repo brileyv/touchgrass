@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Touch Grass Simulator 🌱 (Single File)</title>
+  <style>
+    :root{ --bg:#0b1220;--panel:#111a2b;--text:#e9f0ff;--muted:#9fb0d1;--accent:#7cffa3; }
+    *{box-sizing:border-box}
+    body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color:var(--text); background: radial-gradient(1200px 600px at 70% -10%, #14325a 0%, #0b1220 40%, #0b1220 100%);
+      min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px; }
+    .frame{width:min(960px, 100%);}
+    header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px}
+    h1{font-size:clamp(22px, 3vw, 28px); margin:0; letter-spacing:.2px}
+    .hud{display:flex; gap:10px; flex-wrap:wrap}
+    .pill{background:var(--panel); border:1px solid #1f2a42; padding:8px 12px; border-radius:999px; display:flex; align-items:center; gap:8px}
+    .pill strong{color:var(--accent)}
+    .btn{background:#1a2742; color:var(--text); border:1px solid #25406a; padding:8px 12px; border-radius:10px; cursor:pointer}
+    .btn:hover{background:#213152}
+    .board{position:relative; background:#0d1426; border:1px solid #1c2a4a; border-radius:16px; overflow:hidden; height:520px;
+      box-shadow: 0 40px 120px rgba(0,0,0,.45), inset 0 0 120px rgba(20, 40, 90, .25);}
+    .inside{position:absolute; inset:0 40% 0 0; background:linear-gradient(180deg,#0f172a, #0c1325);}
+    .outside{position:absolute; inset:0 0 0 60%; background:linear-gradient(180deg, #0d2012, #08250e);}
+    .carpet{position:absolute; left:40px; bottom:36px; width:220px; height:120px; border-radius:60px; background:radial-gradient(circle at 30% 30%, #263a63, #1b2746);}
+    .desk{position:absolute; left:70px; bottom:124px; width:160px; height:auto; filter:drop-shadow(0 8px 4px rgba(0,0,0,.45))}
+    .window{position:absolute; right:40px; top:40px; width:160px; height:110px; background:linear-gradient(180deg,#1a2c4f,#2a5ab5); border:2px solid #25406a; border-radius:10px; box-shadow:inset 0 0 30px rgba(0,0,0,.3)}
+    .grass{position:absolute; left:60%; right:0; bottom:0; height:160px; background:#0a7a35; background-image:url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABwUlEQVR4nO3dQWqDQABAUS09THPD5gQ5Yo+TrlKCaJqUgjj/vZU6IAPzZ8wu8/T5cZ3Iett7AuxLAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQNz73hP4L9fL18/1fD7tOJNjmUf49/Db4s/n06/XW/fLdy3Htp4f3XABbI3dxrfun41ilIW/GSqAe8udu1y4V3f6qCfAUD8Cn12URyfGfD6t7v6t50c3xAkwTes79Nnd/Mjae+7fdXTDBMDfDPUJ4HUCiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4r4B4rJaoNlw7eYAAAAASUVORK5CYII='); background-size:cover; background-position:center top; box-shadow: inset 0 20px 30px rgba(0,0,0,.25);}
+    .sun{position:absolute; right:60px; top:60px; width:90px; height:90px; background-image:url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABoklEQVR4nO3dMWrEMBBAUSnkTnv/bn0qpzLsmmRDAsFB77/KjWHwfKTSc7+PfYT1dvUAuVYB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuPerB/hzt9O/sbd5zRz/1NoBHMs/ln7bn4PY5ueBnN9bmHEFHIvf5tdLfYzk8XlxawdwXjiw0J9aOwDoKP+ttQMY4/neP0KAjvjvzP0++gqw9U+AvFQAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUA7gOpHiPFMNRqSAAAAABJRU5ErkJggg=='); background-size:contain; background-repeat:no-repeat; background-position:center; filter:drop-shadow(0 0 30px rgba(255, 208, 0,.35))}
+    .player{position:absolute; left:120px; bottom:160px; width:64px; height:64px; cursor:grab; user-select:none; touch-action:none; transition:transform .05s}
+    .player img{width:100%; height:100%; object-fit:contain; display:block}
+    .dragging{cursor:grabbing; transform:scale(1.02)}
+    .bubble{position:absolute; padding:6px 8px; border-radius:14px; background:#1a2742; border:1px solid #27406a; color:var(--muted);
+      font-size:12px; pointer-events:auto; user-select:none; box-shadow:0 10px 24px rgba(0,0,0,.35);
+      transform:translateZ(0); will-change: transform; display:flex; align-items:center; gap:8px}
+    .bubble img{width:34px; height:34px; object-fit:contain; display:block}
+    .bubble.bad{background:#2a1a1a; border-color:#5c2c2c; color:#ffb1b1}
+    .bubble.good{background:#14321f; border-color:#1f6a3a; color:#b6ffd1}
+    .toast{position:absolute; left:50%; transform:translateX(-50%); top:14px; background:#18243e; border:1px solid #28426b; padding:10px 14px; border-radius:12px; color:#d2e2ff; opacity:0; transition:opacity .25s, transform .25s}
+    .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+    .progress-wrap{position:absolute; left:12px; right:12px; bottom:12px; display:flex; gap:10px; align-items:center}
+    .bar{flex:1; height:10px; background:#1b2747; border:1px solid #263a63; border-radius:999px; overflow:hidden}
+    .bar>span{display:block; height:100%; width:0%; background:linear-gradient(90deg,#67ff9a,#a6ffcf)}
+    .timer{min-width:82px; text-align:center; background:#1b2747; border:1px solid #263a63; padding:6px 10px; border-radius:999px}
+    .overlay{position:absolute; inset:0; backdrop-filter: blur(6px); background:rgba(5,10,20,.65); display:none; align-items:center; justify-content:center}
+    .card{background:#0f172a; border:1px solid #243757; border-radius:14px; padding:22px; text-align:center; width:min(460px, 92%)}
+    .card h2{margin:.2em 0 .3em}
+    .card p{color:var(--muted)}
+    .card .actions{display:flex; gap:10px; justify-content:center; margin-top:14px}
+    .card .actions .btn{padding:10px 14px}
+    .end-art{width:120px; height:auto; border-radius:10px; border:1px solid #243757; box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <header>
+      <h1>Touch Grass Simulator 🌱</h1>
+      <div class="hud">
+        <div class="pill">Score: <strong id="score">0</strong></div>
+        <div class="pill">Level: <strong id="level">1</strong></div>
+        <button class="btn" id="restart">Restart</button>
+        <button class="btn" id="mute">🔊 Sound</button>
+      </div>
+    </header>
+
+    <div class="board" id="board" aria-label="Game board">
+      <div class="inside">
+        <div class="window"></div>
+        <img class="desk" id="desk" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABz0lEQVR4nO3X0WkCQRRA0TWkDm0kdqNVWY6VWIn5WjFGIwkJG+bc86UsyMC7M7Oudm/r8xTWy9ILyLIKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALjXpRfwHx2Op8vn/Xaz4Er+3nABXA9vmn42wP128+l3RjVcALN5iIfj6RLBo539LJr5+YinAfMOcDvE+fttFNLwpwkKYPbVbp9PjFujDn+aBr4CHrk3zHtXxLXra2Q0q93b+rz0In7Tsx1+++zRjr8++kf+VzBcAPke7h0gHxUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAewfpjUg9W0Xg1QAAAABJRU5ErkJggg==" alt="desk setup"/>
+        <div class="carpet"></div>
+      </div>
+      <div class="outside">
+        <div class="sun" id="sun"></div>
+        <div class="grass" id="grass"></div>
+      </div>
+
+      <div class="player" id="player" role="img" aria-label="player">
+        <img id="playerImg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAB4klEQVR4nO3Xy4rCMABAUR3mi3Th/+900W9yVoIjtuNjoMR7zkZCqwRym9Ttbnc8b8j6WnsCrEsAcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiPteewL/bZoOv8b7/WmlmYxh2ADmFvryeXud+4YN4GK/P22m6bCZpsOfT/t1FJfvPTO+/o2566PJvANcL9xlPLdo14t7b+HvjUc1fACPLsSrR8PS/bfHzog+4gh4xNLWvbSVj7y4j9judsfz2pN4xdyiPfOE39sVln7rNpbb+0c0bAD/6VPO81cMfwS84xPe4t9lB4gb/l8A7xFAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQNwPSXZlb6gI7p0AAAAASUVORK5CYII=" alt="player"/>
+      </div>
+      <div class="toast" id="toast">Doomscrolling…</div>
+
+      <div class="progress-wrap">
+        <div class="bar"><span id="progress"></span></div>
+        <div class="timer" id="timer">30s</div>
+      </div>
+
+      <div class="overlay" id="overlay">
+        <div class="card">
+          <img id="end-image" class="end-art" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAACA0lEQVR4nO3dUU4qMQBAUeblLUtWwHZlBSyM94WZNDPI0wg295wfYjVtQ28Z/XI5vL9dD2T9efUGeC0BxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AX3Q9XQ7X0+XV2/i2ZYZ/Hr1+o5fz8WnrLefj4Xq6fLw+a/1n+vvqDXxmPIytAxkD2QtmvLG3722Nb93urfG9vcwSylSPgOV8/Hhjx8P77Osxiq3DX48/sof12G2uvah+q2kCuN3+vZt5e713q8e57o2v55jlML9imgAe/Ui99xE83t71z+7d6v9dfza//neA9bN/bbyp4wFt3eS9uR9Zf2+urbVnMsVfAfycaR4B/AwBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4Acf8Ap5uS3E4QY+4AAAAASUVORK5CYII=" alt="result"/>
+          <h2 id="end-title">You touched grass!</h2>
+          <p id="end-desc">Fresh air acquired. +1 sanity.</p>
+          <div class="actions">
+            <button class="btn" id="again">Play again</button>
+            <button class="btn" id="harder">Harder pls</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p style="opacity:.7; margin-top:10px">Drag the coder from the desk 👉 to the grass 🌱 before time runs out. Tap/click distractions to dismiss them for bonus points.</p>
+  </div>
+
+  <script>
+    const board = document.getElementById('board');
+    const player = document.getElementById('player');
+    const grass = document.getElementById('grass');
+    const scoreEl = document.getElementById('score');
+    const levelEl = document.getElementById('level');
+    const progressEl = document.getElementById('progress');
+    const timerEl = document.getElementById('timer');
+    const toast = document.getElementById('toast');
+    const overlay = document.getElementById('overlay');
+    const endImg = document.getElementById('end-image');
+    const endTitle = document.getElementById('end-title');
+    const endDesc = document.getElementById('end-desc');
+    const restartBtn = document.getElementById('restart');
+    const againBtn = document.getElementById('again');
+    const harderBtn = document.getElementById('harder');
+    const muteBtn = document.getElementById('mute');
+
+    let score = 0, level = 1, timeLeft = 30, running = true, muted = false;
+    let dragging = false, dragOffset = {x:0, y:0};
+    let bubbles = [], lastSpawn = 0, spawnEvery = 1400;
+
+    const BAD_MEMES = [
+      {src:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABqElEQVR4nO3dQWrDMBRAQan00MkJcmx35ZIaQ0IpmOrNLIUXH/QsLTVvY2yDrI+rB+BaAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOI+rx7grz22n29h3+e8aJL/YbkAdvc5x2PbxmPbviN4juM5jOP6MaLj9yvJXAH7ph5jOFs/2+yzKFaQCeA39hBW/fvHEEDesgEcj/bj0f9qvWLexljzcuMty54AvEcAcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNA3Bc7lS7nTV+YfAAAAABJRU5ErkJggg==', label:'Doomscrolling…'},
+      {src:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABuklEQVR4nO3WQWrDMAAAQbv0s/6Q/Vz3UFyCgwk5BBftzCVCiCDQRtE8res+kfV19wa4lwDiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQ9333Bj5lX5a/8bxtN+7kfxsigMfDnqbfA5+37WmeZ0P9BRy/9PPB78tyOXfMX42v1o9iqACunMM4Ph/nr8ZX60cxVADng/rU949kiDfA4dOPvREfk0PeAK+cr/JXB/u4frR3wDyt6373JrjPUDcA7xNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQ9wM8YU2aIkkf/gAAAABJRU5ErkJggg==', label:'1 new notification'},
+      {src:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABpUlEQVR4nO3VwWoCMRRA0Vj6bck35+vsShEduyllwHPPKjAOBN71zWXOeR1hfZ19gZyrAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArANz32Rf4T3vvMcYYa637+cha6+Wdo2efiNgAe+/7IB8Hejvfhv4YjOKjN8BfKBEQG+DdJ0D8xz+jN8Bvg1fiIDbAGK/f++fz0W8+ffhjjHGZc17PvkTOw2yAHCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoA9wM4LysmFl1k1wAAAABJRU5ErkJggg==', label:'NPC moment'},
+      {src:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAB4ElEQVR4nO3dO27CQBRAUTvK7mjCSmnC+kgXJZZtIKCg0T2nohgGy+/60zFPH5+Xiay3Vx8AryWAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxL2/+gAedTkdvj/Px/Pumvl4vnv9Lb+1tX4E82h/Hv1zCNP0e6i3DuCRgY087DVD3QGWJ38Zw3LNWiz37Ld2la99f2v/EQz5DnA5HabL6XB1oPPxvDuU5eC31m9d9df2H8FQASxP+NpVOfpA/ttQAdzy/F2Lgm1DvQRuPXP3nvu32Hun+Mu+I92FhgqA5xvqEcDzCSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAoj7AoxWaiktzxkcAAAAAElFTkSuQmCC', label:'Just one more video'},
+      {src:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABwUlEQVR4nO3WQW7CMAAAQaj6p/z/Fl6VnqqmESAohbTemVswcSx5gznOh3k5kPW29wLYlwDiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQ9773Ap5pWqZv16fj6eG5HpnjLxomgHOb/blZ2zG+DBHA+u28dbPX39vet77ejo32SzDcf4D1m3/JdhOnZbp6z3rslvn/k+EC4D7DBTAt09PP/Fc841WO82Fe9l7Eb9ie4dvP1s6d+efmuTbfKMfAMAHwM8MdAdxHAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQNwHJh9JHhpw4wAAAAAASUVORK5CYII=', label:'Reply for clout'}
+    ];
+    const GOOD_MEMES = [
+      {src:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAACA0lEQVR4nO3dUU4qMQBAUeblLUtWwHZlBSyM94WZNDPI0wg295wfYjVtQ28Z/XI5vL9dD2T9efUGeC0BxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AX3Q9XQ7X0+XV2/i2ZYZ/Hr1+o5fz8WnrLefj4Xq6fLw+a/1n+vvqDXxmPIytAxkD2QtmvLG3722Nb93urfG9vcwSylSPgOV8/Hhjx8P77Osxiq3DX48/sof12G2uvah+q2kCuN3+vZt5e713q8e57o2v55jlML9imgAe/Ui99xE83t71z+7d6v9dfza//neA9bN/bbyp4wFt3eS9uR9Zf2+urbVnMsVfAfycaR4B/AwBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4Acf8Ap5uS3E4QY+4AAAAASUVORK5CYII=', label:'Breathe in…'},
+      {src:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABqElEQVR4nO3XwW3CMABA0VJ1NhiDDegsbABjMB2coKlVDj0go7z/pBzi5GDJX5a9OR2214+wPmdPIHMVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgPuaPYFX2h8vv97P37tJM3lfxA5wX/hlEPvj5fEsLcf++r42RACj+6KOYSzHx3/WigwgPwoARwQwbufj1v9sXLA5HbbX2ZN4R8oZYNXXwP8Sr43tADjiDJDnCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAdwNJ7zSagfc66QAAAABJRU5ErkJggg==', label:'Dog video break'},
+      {src:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABuElEQVR4nO3VwW3CQBBAUYjSE0VQBK1BD9ADVEVORCvLwIk48vvvZMkgjTTfu9vr+XjfhPW19ABZVgHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwATu/1hs9sflh7jz3wvPcCnTZd5u5wWmuR/WvUJ8Fj+3NIfX/oYyPRZOAlWHcDodjn9hjANYy6U8fdrxgQwmi5exgQwHumvroZn/1mr7fV8vC89xCeNC3z35c+9X/s1sPoA8hpzBWReAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgCwBUArgBwBYArAFwB4AoAVwC4AsAVAK4AcAWAKwBcAeAKAFcAuALAFQCuAHAFgCsAXAHgCgBXALgfeRk4WXNWOp4AAAAASUVORK5CYII=', label:'Cat tax paid'},
+      {src:'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAABwElEQVR4nO3dMU7DMABA0QRxVDL0QnToYctUFAVKw4BC/d+bIketLPm79tb5bXq/TmS9HD0BjiWAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxOUCuFxP0+V6Onoa/8Y82p9Hbxd3mc8HzeQ5vB49gb+yzOfP3X573r6fpq/BrD/73fhoMkfAMp/vLuB6fM/zSIYN4LaDHy3cerdvF3zvdzyzYQP46Sd+bb3I6wvivfHRDH0JvHeWP1K6AwwXAL8z7BHAPgKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiPgBqHkndGRmHKgAAAABJRU5ErkJggg==', label:'Rizz acquired'}
+    ];
+
+    const audio = new (window.AudioContext||window.webkitAudioContext)();
+    function beep(freq=660, dur=0.06, type='sine', vol=0.02){
+      if(muted) return; const o=audio.createOscillator(); const g=audio.createGain();
+      o.type=type; o.frequency.value=freq; g.gain.value=vol; o.connect(g); g.connect(audio.destination);
+      const now=audio.currentTime; o.start(now); o.stop(now+dur);
+    }
+
+    function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+    function rect(el){ return el.getBoundingClientRect(); }
+    function intersect(a,b){ return !(a.right<b.left || a.left>b.right || a.bottom<b.top || a.top>b.bottom); }
+
+    function setPlayer(x,y){
+      const r = rect(board);
+      const px = clamp(x - r.left, 0, r.width-64);
+      const py = clamp(y - r.top, 0, r.height-64);
+      player.style.left = px + 'px';
+      player.style.top  = py + 'px';
+      updateProgress();
+    }
+
+    function resetPlayer(){
+      player.style.left='120px'; player.style.top='160px';
+    }
+
+    function updateProgress(){
+      const r = rect(board); const pr = rect(player);
+      const percent = clamp((pr.left - r.left) / r.width * 100, 0, 100);
+      progressEl.style.width = percent + '%';
+    }
+
+    function toastMsg(text){
+      toast.textContent = text; toast.classList.add('show');
+      setTimeout(()=>toast.classList.remove('show'), 900);
+    }
+
+    function spawnBubble(){
+      const b = document.createElement('div');
+      const bad = Math.random() < 0.66;
+      b.className = 'bubble ' + (bad? 'bad':'good');
+      const set = bad ? BAD_MEMES : GOOD_MEMES;
+      const item = set[Math.floor(Math.random()*set.length)];
+      b.innerHTML = `<img src="${item.src}" alt="meme"> <span>${item.label}</span>`;
+      const r = rect(board);
+      const x = Math.random() * (r.width-160) + 20;
+      const y = Math.random() * (r.height-160) + 40;
+      b.style.left = x + 'px'; b.style.top = y + 'px';
+      b.dataset.vx = (Math.random()*1.6 + 0.4) * (Math.random()<.5? -1:1);
+      b.dataset.vy = (Math.random()*1.2 + 0.2) * (Math.random()<.5? -1:1);
+      b.dataset.bad = bad ? '1':'0';
+      b.addEventListener('click', ()=>{
+        if(b.dataset.bad==='1'){ score+=2; scoreEl.textContent=score; toastMsg('🧹 +2 focus'); }
+        beep(520, .06, 'square', .03);
+        b.remove();
+      });
+      board.appendChild(b);
+      bubbles.push(b);
+    }
+
+    function updateBubbles(dt){
+      const r = rect(board);
+      const pr = rect(player);
+      for(let i=bubbles.length-1; i>=0; i--){
+        const b = bubbles[i];
+        const x = parseFloat(b.style.left); const y = parseFloat(b.style.top);
+        let vx = parseFloat(b.dataset.vx), vy = parseFloat(b.dataset.vy);
+        let nx = x + vx * dt * 0.1; let ny = y + vy * dt * 0.1;
+        if(nx<10||nx>r.width-140){ vx*=-1; nx=clamp(nx,10,r.width-140); }
+        if(ny<10||ny>r.height-60){ vy*=-1; ny=clamp(ny,10,r.height-60); }
+        b.style.left=nx+'px'; b.style.top=ny+'px'; b.dataset.vx=vx; b.dataset.vy=vy;
+
+        if(intersect(rect(b), pr)){
+          if(b.dataset.bad==='1'){
+            const currentLeft = parseFloat(player.style.left||'120');
+            const newLeft = Math.max(40, currentLeft - (40 + level*10));
+            player.style.left = newLeft + 'px';
+            toastMsg('💀 -focus');
+            beep(220, .08, 'sawtooth', .03);
+          } else {
+            score++; scoreEl.textContent=score; toastMsg('✨ +1 vibe');
+            beep(760, .05, 'triangle', .025);
+          }
+        }
+      }
+    }
+
+    function startDrag(e){
+      if(!running) return;
+      const p = (e.touches? e.touches[0]: e);
+      dragging = true; player.classList.add('dragging');
+      const pr = rect(player);
+      dragOffset.x = p.clientX - pr.left; dragOffset.y = p.clientY - pr.top;
+      e.preventDefault();
+    }
+    function moveDrag(e){ if(!dragging) return; const p=(e.touches? e.touches[0]: e); setPlayer(p.clientX - dragOffset.x + 32, p.clientY - dragOffset.y + 32); }
+    function endDrag(){ dragging=false; player.classList.remove('dragging'); checkWin(); }
+
+    player.addEventListener('mousedown', startDrag);
+    window.addEventListener('mousemove', moveDrag);
+    window.addEventListener('mouseup', endDrag);
+    player.addEventListener('touchstart', startDrag, {passive:false});
+    window.addEventListener('touchmove', moveDrag, {passive:false});
+    window.addEventListener('touchend', endDrag);
+
+    function checkWin(){
+      const pr = rect(player), gr = rect(grass);
+      if(pr.bottom > gr.top && pr.right > gr.left){
+        score += 5 + level; scoreEl.textContent = score;
+        running=false; overlay.style.display='flex';
+        endImg.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAACA0lEQVR4nO3dUU4qMQBAUeblLUtWwHZlBSyM94WZNDPI0wg295wfYjVtQ28Z/XI5vL9dD2T9efUGeC0BxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AX3Q9XQ7X0+XV2/i2ZYZ/Hr1+o5fz8WnrLefj4Xq6fLw+a/1n+vvqDXxmPIytAxkD2QtmvLG3722Nb93urfG9vcwSylSPgOV8/Hhjx8P77Osxiq3DX48/sof12G2uvah+q2kCuN3+vZt5e713q8e57o2v55jlML9imgAe/Ui99xE83t71z+7d6v9dfza//neA9bN/bbyp4wFt3eS9uR9Zf2+urbVnMsVfAfycaR4B/AwBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4Acf8Ap5uS3E4QY+4AAAAASUVORK5CYII=';
+        endTitle.textContent='You touched grass!'; endDesc.textContent = `Fresh air acquired. +${5+level} sanity`;
+        beep(880,.06,'sine',.03); setTimeout(()=>beep(990,.06,'sine',.03),70);
+      }
+    }
+
+    function gameOver(){
+      running=false; overlay.style.display='flex';
+      endImg.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAAB5klEQVR4nO3dW26CQABAUWi6O7db10e/aG3LwzQ1Qu85iYkEHQhzHfljfBuGaSDr5dknwHMJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiHt99gnc4zJ9Pt/6Oo6nG//IxqM/PXyenOs4fnl/u+/7/lu3E7o00Uvjf//+3nG3xjl6UKf6C7iO4+IFn7eXLvb8ua1JXDrOmrVx1raP7jQBXKbp4zUM2xM579sKYs/ehN4T0BkiOMU9wDD8XFr3lu6tcf7qfP6Dw68Ae0v2b37RWyvJ7cQu/ZLXxlmK8wwOfxPIYx1+BeCxBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcQJIE4AcQKIE0CcAOIEECeAOAHECSBOAHECiBNAnADiBBAngDgBxAkgTgBxAogTQJwA4gQQJ4A4AcS9A9+Egq0XtzzmAAAAAElFTkSuQmCC';
+      endTitle.textContent='Ran out of time'; endDesc.textContent='Touch grass to escape the doomscroll.';
+      beep(220,.12,'sawtooth',.035)
+    }
+
+    let last = performance.now();
+    function loop(now){
+      const dt = now - last; last = now;
+      if(running){
+        if(now - lastSpawn > spawnEvery){ spawnBubble(); lastSpawn = now; }
+        updateBubbles(dt);
+      }
+      requestAnimationFrame(loop);
+    }
+
+    function startTimer(){
+      clearInterval(window._timer);
+      window._timer = setInterval(()=>{ if(!running) return; timeLeft--; timerEl.textContent = timeLeft+'s'; if(timeLeft<=0){ clearInterval(window._timer); gameOver(); } }, 1000);
+    }
+
+    function startLevel(lvl=1){
+      level = lvl; levelEl.textContent = level; timeLeft = Math.max(12, 30 - (level-1)*3);
+      timerEl.textContent = timeLeft+'s';
+      spawnEvery = Math.max(500, 1400 - (level-1)*150);
+      bubbles.forEach(b=>b.remove()); bubbles = []; lastSpawn = performance.now();
+      resetPlayer(); updateProgress(); running=true; overlay.style.display='none';
+      startTimer(); toastMsg('🏁 Go!');
+    }
+
+    restartBtn.onclick = ()=>{ score=0; scoreEl.textContent=score; startLevel(1); };
+    againBtn.onclick = ()=> startLevel(level);
+    harderBtn.onclick = ()=> startLevel(level+1);
+    muteBtn.onclick = ()=>{ muted = !muted; muteBtn.textContent = muted? '🔇 Muted':'🔊 Sound'; };
+
+    window.addEventListener('resize', ()=>{ updateProgress(); });
+
+    startLevel(1);
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
