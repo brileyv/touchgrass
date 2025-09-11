@@ -99,6 +99,10 @@ let pendingX=20,pendingY=20,lastX=20,lastY=20;
 let stunnedUntil=0;
 let invincibleUntil=0;   // brief grace so tiles can't instantly re-pin you
 
+// timing
+const BASE_TIME = 30;        // per-level timer reset base
+const MAX_STEP  = 12;        // swept movement micro-steps (lower = stricter)
+
 /* Place sprites */
 grass.innerHTML=`<img alt="grass" src="${SPRITES.grass}" style="width:100%;height:100%">`;
 player.innerHTML=`<img alt="player" src="${SPRITES.player}" style="width:100%;height:100%">`;
@@ -118,6 +122,27 @@ function beep(freq=440,dur=0.1){ if(muted) return; ensureAudio(); const t0=audio
 /* Helpers */
 function showToast(m){ toast.textContent=m; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),900); }
 function rectsOverlap(a,b){ return !(b.right<a.left||b.left>a.right||b.bottom<a.top||b.top>a.bottom); }
+
+/* --- segment-vs-rect helpers for anti-ghosting --- */
+function segIntersectsRect(x1,y1,x2,y2, r){
+  if(pointInRect(x1,y1,r) || pointInRect(x2,y2,r)) return true;
+  const edges = [
+    [r.left, r.top,    r.right, r.top   ],
+    [r.right,r.top,    r.right, r.bottom],
+    [r.right,r.bottom, r.left,  r.bottom],
+    [r.left, r.bottom, r.left,  r.top   ]
+  ];
+  for(const [ax,ay,bx,by] of edges){
+    if(segmentsIntersect(x1,y1,x2,y2, ax,ay,bx,by)) return true;
+  }
+  return false;
+}
+function pointInRect(x,y,r){ return x>=r.left && x<=r.right && y>=r.top && y<=r.bottom; }
+function segmentsIntersect(x1,y1,x2,y2, x3,y3,x4,y4){
+  function ccw(ax,ay,bx,by,cx,cy){ return (cy-ay)*(bx-ax) > (by-ay)*(cx-ax); }
+  return (ccw(x1,y1,x3,y3,x4,y4) !== ccw(x2,y2,x3,y3,x4,y4)) &&
+         (ccw(x1,y1,x2,y2,x3,y3) !== ccw(x1,y1,x2,y2,x4,y4));
+}
 
 /* Safe respawn + short invincibility */
 function resetPlayer(){
@@ -174,12 +199,17 @@ let tickId=setInterval(()=>{},1000);
 function startTimer(){ clearInterval(tickId); tickId=setInterval(tick,1000); }
 function tick(){ if(!running) return; time--; timerEl.textContent=time; if(time<=0) gameOver(false); }
 
-/* Collisions (with +5s on good bubble, invincibility on tile hit) */
+/* Collisions: instant win on grass, +5s bubbles, invincibility for tiles */
 function checkCollisions(){ 
   if(!running) return; 
   const pr=player.getBoundingClientRect(), gr=grass.getBoundingClientRect(); 
   const px=pr.left+pr.width/2, py=pr.top+pr.height/2; 
-  if(px>gr.left&&px<gr.right&&py>gr.top&&py<gr.bottom){ gameOver(true);return; }
+
+  // --- instant win on grass ---
+  if(px>gr.left&&px<gr.right&&py>gr.top&&py<gr.bottom){
+    gameOver(true);
+    return;
+  }
 
   // tile hits only if not invincible
   const now = performance.now();
@@ -206,8 +236,7 @@ function checkCollisions(){
   }
 }
 
-/* Movement + anti-pinning for tiles */
-const MAX_STEP=12;
+/* Movement: anti-ghost (path collision) + hard anti-pin for tiles */
 function updatePlayer(){ 
   const now=performance.now(); 
   if(now<stunnedUntil){ requestAnimationFrame(updatePlayer); return; }
@@ -225,46 +254,92 @@ function updatePlayer(){
       if(x<=0||x+60>=rect.width)  t.vx*=-1;
       if(y<=0||y+60>=rect.height) t.vy*=-1;
 
-      // anti-pin: steer away from player & kick if too close
-      const tx=x+30, ty=y+30;
+      // predicted tile rect
+      let nx=x, ny=y;
+      const tx=nx+30, ty=ny+30;
       const dx=tx-pcx, dy=ty-pcy;
-      const d=Math.hypot(dx,dy);
+      let d=Math.hypot(dx,dy);
 
-      const AVOID_R=90;
+      // repel near player
+      const AVOID_R=95;
       if(d>0 && d<AVOID_R){
-        const strength=(AVOID_R-d)/AVOID_R;  // 0..1
-        t.vx += (dx/d)*0.6*strength;
-        t.vy += (dy/d)*0.6*strength;
-      }
-      if(d<40){
-        const nx=(d>0?dx/d:(Math.random()*2-1));
-        const ny=(d>0?dy/d:(Math.random()*2-1));
-        x  += nx*8; y  += ny*8;        // positional shove
-        t.vx+= nx*1.2; t.vy+= ny*1.2;  // velocity shove
+        const s=(AVOID_R-d)/AVOID_R;
+        t.vx += (dx/d)*0.7*s;
+        t.vy += (dy/d)*0.7*s;
       }
 
-      // keep some drift; cap max speed
-      const MIN_SPEED=0.6, MAX_SPEED=4 + level*0.4;
+      // resolve overlap (separate tile out of player)
+      const tileRect={left:nx, top:ny, right:nx+60, bottom:ny+60};
+      const overlap = !(tileRect.right<pr.left||tileRect.left>pr.right||tileRect.bottom<pr.top||tileRect.top>pr.bottom);
+      if(overlap){
+        const oLeft   = pr.right  - tileRect.left;
+        const oRight  = tileRect.right - pr.left;
+        const oTop    = pr.bottom - tileRect.top;
+        const oBottom = tileRect.bottom - pr.top;
+        const xPush = (oLeft < oRight) ? -oLeft :  oRight;
+        const yPush = (oTop  < oBottom)? -oTop  :  oBottom;
+
+        if(Math.abs(xPush) < Math.abs(yPush)){
+          nx += xPush;
+          t.vx = -Math.sign(xPush) * Math.max(Math.abs(t.vx), 1.2);
+        }else{
+          ny += yPush;
+          t.vy = -Math.sign(yPush) * Math.max(Math.abs(t.vy), 1.2);
+        }
+        invincibleUntil = Math.max(invincibleUntil, performance.now()+250);
+      }
+
+      // minimum drift; cap max speed
+      const MIN_SPEED=0.7, MAX_SPEED=4 + level*0.45;
       let sp=Math.hypot(t.vx,t.vy);
       if(sp<MIN_SPEED){
         const ang=Math.random()*Math.PI*2;
         t.vx+=Math.cos(ang)*MIN_SPEED;
         t.vy+=Math.sin(ang)*MIN_SPEED;
-      } else if(sp>MAX_SPEED){
+      }else if(sp>MAX_SPEED){
         t.vx=t.vx/sp*MAX_SPEED; t.vy=t.vy/sp*MAX_SPEED;
       }
 
-      x=Math.max(0,Math.min(rect.width -60,x));
-      y=Math.max(0,Math.min(rect.height-60,y));
-      t.style.left=x+'px'; t.style.top=y+'px';
+      // commit
+      nx=Math.max(0,Math.min(rect.width -60,nx));
+      ny=Math.max(0,Math.min(rect.height-60,ny));
+      t.style.left=nx+'px'; t.style.top=ny+'px';
     });
   }
 
-  // player swept move to avoid tunneling through tiles
+  /* --- Player swept movement with path collision to prevent ghosting --- */
   let dx=pendingX-lastX, dy=pendingY-lastY, dist=Math.hypot(dx,dy);
   let steps=Math.max(1,Math.ceil(dist/MAX_STEP));
+
   for(let i=0;i<steps;i++){
-    lastX+=dx/steps; lastY+=dy/steps;
+    const nx = lastX + dx/steps;
+    const ny = lastY + dy/steps;
+
+    // segment path from current center to next center vs each tile rect (board coords)
+    const now = performance.now();
+    if(now > invincibleUntil){
+      const prNow = {left:lastX, top:lastY, right:lastX+48, bottom:lastY+48};
+      const cx1 = prNow.left+24, cy1 = prNow.top+24;
+      const cx2 = nx+24,         cy2 = ny+24;
+
+      let hit = false;
+      const br = board.getBoundingClientRect();
+      for(const t of tiles){
+        const tr = t.getBoundingClientRect();
+        const r = { left: tr.left - br.left, top: tr.top - br.top,
+                    right: tr.right - br.left, bottom: tr.bottom - br.top };
+        if(segIntersectsRect(cx1,cy1,cx2,cy2, r)){ hit = true; break; }
+      }
+      if(hit){
+        resetPlayer();
+        showToast(rageTile[Math.random()*rageTile.length|0]);
+        beep(300,0.12);
+        break;
+      }
+    }
+
+    // move and check normal overlaps (win, bubbles, etc.)
+    lastX = nx; lastY = ny;
     player.style.left=lastX+'px'; player.style.top=lastY+'px';
     checkCollisions();
     if(performance.now()<stunnedUntil) break;
@@ -299,7 +374,8 @@ document.addEventListener('touchmove',e=>{
 /* Game flow */
 function startLevel(lv){ 
   level=lv; levelEl.textContent=level; 
-  time=Math.max(10,30-(lv-1)*3); timerEl.textContent=time; 
+  time=Math.max(10, BASE_TIME - (lv-1)*3);  // reset timer each level
+  timerEl.textContent=time; 
   tiles.forEach(t=>t.remove()); tiles=[]; 
   bubbles.forEach(b=>b.el.remove()); bubbles=[]; 
   for(let i=0;i<lv+2;i++) spawnTile(1+lv*0.3); 
