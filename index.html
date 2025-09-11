@@ -95,23 +95,28 @@ const rageTime=["⌛ Ran out of time, doomscroller.","😭 Couldn't even touch g
 const winMsgs=["🌱 Fresh air unlocked!","✨ Your sanity +10."];
 
 /* -------- Audio (simple) -------- */
-let audioCtx=null,musicStarted=false;
+let audioCtx=null;
 function ensureAudio(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
 function beep(freq=440,dur=0.1){ if(muted) return; ensureAudio(); const t0=audioCtx.currentTime; const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type='square'; o.frequency.value=freq; g.gain.value=0.05; g.gain.exponentialRampToValueAtTime(0.0001,t0+dur); o.connect(g).connect(audioCtx.destination); o.start(t0); o.stop(t0+dur); }
 
 /* -------- Helpers -------- */
 function showToast(m){ toast.textContent=m; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),900); }
-function resetPlayer(){ pendingX=20;pendingY=20;lastX=20;lastY=20;player.style.left="20px";player.style.top="20px";stunnedUntil=performance.now()+350;player.classList.add('stunned');setTimeout(()=>player.classList.remove('stunned'),350); }
+function resetPlayer(){ 
+  pendingX=20;pendingY=20;lastX=20;lastY=20;
+  player.style.left="20px";player.style.top="20px";
+  stunnedUntil=performance.now()+350;
+  player.classList.add('stunned');
+  setTimeout(()=>player.classList.remove('stunned'),350);
+}
 
 /* -------- Spawners -------- */
 function spawnTile(speedBase){ 
   const d=badHabits[Math.random()*badHabits.length|0];
   const el=document.createElement('div'); el.className='tile';
   let x,y;
-  do {
-    x=60+Math.random()*350;
-    y=20+Math.random()*350;
-  } while(Math.hypot(x-20,y-20)<120); // ✅ Safe radius
+  do { // make sure not too close to spawn
+    x=60+Math.random()*350; y=20+Math.random()*350;
+  } while(Math.hypot(x-20,y-20)<120);
   el.style.left=x+'px'; el.style.top=y+'px';
   el.innerHTML=`<img src="${d.img}" alt=""><span>${d.label}</span>`;
   board.appendChild(el);
@@ -120,7 +125,14 @@ function spawnTile(speedBase){
   el.vx=Math.cos(ang)*sp; el.vy=Math.sin(ang)*sp;
   tiles.push(el);
 }
-function spawnBubble(){ const d=goodVibes[Math.random()*goodVibes.length|0]; const b=document.createElement('div'); b.className='bubble'; b.style.left=(Math.random()*400)+'px'; b.style.top=(Math.random()*400)+'px'; b.innerHTML=`<img src="${d.img}" alt=""><span>${d.label}</span>`; board.appendChild(b); bubbles.push({el:b}); setTimeout(()=>{b.remove();bubbles=bubbles.filter(x=>x.el!==b)},4500); }
+function spawnBubble(){ 
+  const d=goodVibes[Math.random()*goodVibes.length|0];
+  const b=document.createElement('div'); b.className='bubble';
+  b.style.left=(Math.random()*400)+'px'; b.style.top=(Math.random()*400)+'px';
+  b.innerHTML=`<img src="${d.img}" alt=""><span>${d.label}</span>`;
+  board.appendChild(b); bubbles.push({el:b});
+  setTimeout(()=>{b.remove();bubbles=bubbles.filter(x=>x.el!==b)},4500);
+}
 
 /* -------- Timer -------- */
 let tickId=setInterval(()=>{},1000);
@@ -129,21 +141,51 @@ function tick(){ if(!running) return; time--; timerEl.textContent=time; if(time<
 
 /* -------- Collisions -------- */
 function rectsOverlap(a,b){ return !(b.right<a.left||b.left>a.right||b.bottom<a.top||b.top>a.bottom); }
-function checkCollisions(){ if(!running) return; const pr=player.getBoundingClientRect(),gr=grass.getBoundingClientRect(); const px=pr.left+pr.width/2,py=pr.top+pr.height/2; if(px>gr.left&&px<gr.right&&py>gr.top&&py<gr.bottom){ gameOver(true);return;} for(const t of tiles){ if(rectsOverlap(pr,t.getBoundingClientRect())){ resetPlayer(); showToast(rageTile[Math.random()*rageTile.length|0]); beep(300,0.12); break; } } for(const b of bubbles){ if(rectsOverlap(pr,b.el.getBoundingClientRect())){ score++; scoreEl.textContent=score; showToast("✨ "+b.el.innerText); beep(620,0.1); } } }
+function checkCollisions(){ 
+  if(!running) return; 
+  const pr=player.getBoundingClientRect(),gr=grass.getBoundingClientRect(); 
+  const px=pr.left+pr.width/2,py=pr.top+pr.height/2; 
+  if(px>gr.left&&px<gr.right&&py>gr.top&&py<gr.bottom){ gameOver(true);return;} 
+  for(const t of tiles){ 
+    if(rectsOverlap(pr,t.getBoundingClientRect())){ 
+      resetPlayer(); 
+      showToast(rageTile[Math.random()*rageTile.length|0]); 
+      beep(300,0.12); 
+      break; 
+    } 
+  } 
+  for(const b of bubbles){ 
+    if(rectsOverlap(pr,b.el.getBoundingClientRect())){ 
+      score++; scoreEl.textContent=score; 
+      showToast("✨ "+b.el.innerText); 
+      beep(620,0.1); 
+    } 
+  } 
+}
 
 /* -------- Movement -------- */
 const MAX_STEP=12;
-function updatePlayer(){ const now=performance.now(); if(now<stunnedUntil){ requestAnimationFrame(updatePlayer); return; }
-  // move tiles
-  if(running){ const rect=board.getBoundingClientRect(); tiles.forEach(t=>{ let x=t.offsetLeft+t.vx,y=t.offsetTop+t.vy;
-    if(x<=0||x+60>=rect.width) t.vx*=-1; if(y<=0||y+60>=rect.height) t.vy*=-1;
-    // ✅ ensure min speed
-    if(Math.abs(t.vx)<0.2 && Math.abs(t.vy)<0.2){ const ang=Math.random()*Math.PI*2; const sp=2; t.vx=Math.cos(ang)*sp; t.vy=Math.sin(ang)*sp; }
-    t.style.left=Math.max(0,Math.min(rect.width-60,x))+'px'; t.style.top=Math.max(0,Math.min(rect.height-60,y))+'px';
-  }); }
-  // player swept move
-  let dx=pendingX-lastX,dy=pendingY-lastY,dist=Math.hypot(dx,dy); let steps=Math.max(1,Math.ceil(dist/MAX_STEP));
-  for(let i=0;i<steps;i++){ lastX+=dx/steps; lastY+=dy/steps; player.style.left=lastX+'px'; player.style.top=lastY+'px'; checkCollisions(); if(performance.now()<stunnedUntil) break; }
+function updatePlayer(){ 
+  const now=performance.now(); 
+  if(now<stunnedUntil){ requestAnimationFrame(updatePlayer); return; }
+  if(running){ const rect=board.getBoundingClientRect(); 
+    tiles.forEach(t=>{ 
+      let x=t.offsetLeft+t.vx,y=t.offsetTop+t.vy;
+      if(x<=0||x+60>=rect.width) t.vx*=-1; 
+      if(y<=0||y+60>=rect.height) t.vy*=-1;
+      if(Math.abs(t.vx)<0.2 && Math.abs(t.vy)<0.2){ const ang=Math.random()*Math.PI*2; const sp=2; t.vx=Math.cos(ang)*sp; t.vy=Math.sin(ang)*sp; }
+      t.style.left=Math.max(0,Math.min(rect.width-60,x))+'px'; 
+      t.style.top=Math.max(0,Math.min(rect.height-60,y))+'px';
+    }); 
+  }
+  let dx=pendingX-lastX,dy=pendingY-lastY,dist=Math.hypot(dx,dy); 
+  let steps=Math.max(1,Math.ceil(dist/MAX_STEP));
+  for(let i=0;i<steps;i++){ 
+    lastX+=dx/steps; lastY+=dy/steps; 
+    player.style.left=lastX+'px'; player.style.top=lastY+'px'; 
+    checkCollisions(); 
+    if(performance.now()<stunnedUntil) break; 
+  }
   requestAnimationFrame(updatePlayer);
 }
 requestAnimationFrame(updatePlayer);
@@ -152,17 +194,9 @@ requestAnimationFrame(updatePlayer);
 board.addEventListener('mousedown',e=>{dragging=true;offsetX=e.offsetX;offsetY=e.offsetY;});
 document.addEventListener('mouseup',()=>dragging=false);
 document.addEventListener('mousemove',e=>{ if(!dragging||!running)return;const r=board.getBoundingClientRect();pendingX=Math.max(0,Math.min(r.width-40,e.clientX-r.left-offsetX));pendingY=Math.max(0,Math.min(r.height-40,e.clientY-r.top-offsetY));});
-player.addEventListener('touchstart',e=>{
-  e.preventDefault();
-  dragging=true;
-  const t=e.touches[0], r=player.getBoundingClientRect();
-  offsetX=t.clientX-r.left; 
-  offsetY=t.clientY-r.top;
-},{passive:false});
-
+player.addEventListener('touchstart',e=>{e.preventDefault();dragging=true;const t=e.touches[0],r=player.getBoundingClientRect();offsetX=t.clientX-r.left;offsetY=t.clientY-r.top;},{passive:false});
 document.addEventListener('touchend',()=>dragging=false);
-
-document.addEventListener('touchmove',e=>{
+document.addEventListener('touchmove',e=>{if(!dragging||!running)return;e.preventDefault();const t=e.touches[0],r=board.getBoundingClientRect();pendingX=Math.max(0,Math.min(r.width-document.addEventListener('touchmove',e=>{
   if(!dragging||!running) return;
   e.preventDefault();
   const t=e.touches[0], r=board.getBoundingClientRect();
@@ -213,3 +247,4 @@ startLevel(1);
 </script>
 </body>
 </html>
+                                                                                                                                                                             
