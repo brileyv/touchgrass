@@ -198,5 +198,6 @@ resetPlayer();
 startLevel(1);
 </script>
 </body>
-</html>  
+</html>
+  
 document.addEventListener('touchmove',e=>{if(!dragging||!running)return;e.preventDefault();const t=e.touches[0],r=board.getBoundingClientRect();pendingX=Math.max(0,Math.min(r.width-40,t.clientX-r.left-offsetX));pendingY=Math.max(0,Math.min(r.height-40,t.clientY
