@@ -152,9 +152,23 @@ requestAnimationFrame(updatePlayer);
 board.addEventListener('mousedown',e=>{dragging=true;offsetX=e.offsetX;offsetY=e.offsetY;});
 document.addEventListener('mouseup',()=>dragging=false);
 document.addEventListener('mousemove',e=>{ if(!dragging||!running)return;const r=board.getBoundingClientRect();pendingX=Math.max(0,Math.min(r.width-40,e.clientX-r.left-offsetX));pendingY=Math.max(0,Math.min(r.height-40,e.clientY-r.top-offsetY));});
-player.addEventListener('touchstart',e=>{e.preventDefault();dragging=true;const t=e.touches[0],r=player.getBoundingClientRect();offsetX=t.clientX-r.left;offsetY=t.clientY-r.top;},{passive:false});
+player.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  dragging=true;
+  const t=e.touches[0], r=player.getBoundingClientRect();
+  offsetX=t.clientX-r.left; 
+  offsetY=t.clientY-r.top;
+},{passive:false});
+
 document.addEventListener('touchend',()=>dragging=false);
-.pendingY=Math.max(0,Math.min(r.height-40,t.clientY-r.top-offsetY));},{passive:false});
+
+document.addEventListener('touchmove',e=>{
+  if(!dragging||!running) return;
+  e.preventDefault();
+  const t=e.touches[0], r=board.getBoundingClientRect();
+  pendingX=Math.max(0,Math.min(r.width-40,t.clientX-r.left-offsetX));
+  pendingY=Math.max(0,Math.min(r.height-40,t.clientY-r.top-offsetY));
+},{passive:false});
 
 /* -------- Game flow -------- */
 function startLevel(lv){ 
@@ -186,7 +200,7 @@ function gameOver(win){
 }
 
 /* -------- Buttons -------- */
-restartBtn.onclick=()=>{ overlay.style.display="none"; score=0;scoreEl.textContent=0; startLevel(1); };
+restartBtn.onclick=()=>{ overlay.style.display="none"; score=0; scoreEl.textContent=0; startLevel(1); };
 nextBtn.onclick=()=>{ overlay.style.display="none"; startLevel(level+1); };
 muteBtn.onclick=()=>{ muted=!muted; muteBtn.textContent=muted?"🔇 Unmute":"🔊 Mute"; };
 
@@ -199,5 +213,3 @@ startLevel(1);
 </script>
 </body>
 </html>
-  
-document.addEventListener('touchmove',e=>{if(!dragging||!running)return;e.preventDefault();const t=e.touches[0],r=board.getBoundingClientRect();pendingX=Math.max(0,Math.min(r.width-40,t.clientX-r.left-offsetX));pendingY=Math.max(0,Math.min(r.height-40,t.clientY
