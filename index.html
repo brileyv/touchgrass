@@ -60,7 +60,69 @@ const SPRITES={
   sprout:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='28' y='28' width='8' height='28' fill='#207d3a'/><ellipse cx='22' cy='24' rx='12' ry='8' fill='#2ecc71'/><ellipse cx='42' cy='18' rx='10' ry='7' fill='#2ecc71'/></svg>`)}`,
   sun:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='12' fill='#ffd34a' stroke='#a47d00' stroke-width='3'/><g stroke='#ffd34a' stroke-width='4'><line x1='32' y1='6' x2='32' y2='16'/><line x1='32' y1='48' x2='32' y2='58'/><line x1='6' y1='32' x2='16' y2='32'/><line x1='48' y1='32' x2='58' y2='32'/><line x1='12' y1='12' x2='19' y2='19'/><line x1='52' y1='12' x2='45' y2='19'/><line x1='12' y1='52' x2='19' y2='45'/><line x1='52' y1='52' x2='45' y2='45'/></g></svg>`)}`
 };
-/* -------- DOM refs -------- */
+  <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Touch Grass Simulator 🌱</title>
+<style>
+  :root { --bg:#0b1220; --panel:#18243e; --text:#e9f0ff; --btn:#213152; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text);
+       min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px}
+  h1{margin:.5rem 0 0}
+  .hud{display:flex;gap:12px;align-items:center}
+  .hud button{background:var(--btn);color:var(--text);border:none;padding:6px 10px;border-radius:8px;cursor:pointer}
+  .board{width:min(92vw,520px);height:min(92vw,520px,520px);background:var(--panel);position:relative;border-radius:14px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+  .player{position:absolute;left:20px;top:20px;width:48px;height:48px}
+  .tile,.bubble{position:absolute;display:flex;flex-direction:column;align-items:center;text-align:center;pointer-events:none}
+  .tile img,.bubble img{width:50px;height:50px}
+  .tile span,.bubble span{font-size:11px;color:#fff;margin-top:2px}
+  .grass{position:absolute;right:0;bottom:0;width:100px;height:100px}
+  .toast{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:#111a2b;padding:8px 14px;border-radius:8px;opacity:0;transition:opacity .25s}
+  .toast.show{opacity:1}
+  .overlay{position:absolute;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;flex-direction:column;gap:8px;text-align:center;z-index:10;padding:10px}
+  .overlay button{background:var(--btn);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer}
+  .stunned{filter:saturate(.6) brightness(.9)}
+</style>
+</head>
+<body>
+  <h1>Touch Grass Simulator 🌱</h1>
+  <div class="hud">
+    <span>Score: <b id="score">0</b></span> |
+    <span>Time: <b id="timer">60</b>s</span> |
+    <span>Level: <b id="level">1</b></span>
+    <button id="mute">🔊 Mute</button>
+  </div>
+
+  <div class="board" id="board">
+    <div class="grass" id="grass"></div>
+    <div class="player" id="player"></div>
+    <div class="toast" id="toast"></div>
+    <div class="overlay" id="overlay">
+      <h2 id="end-title">Level Complete!</h2>
+      <p id="end-desc">You touched grass!</p>
+      <div style="display:flex;gap:8px">
+        <button id="restart">Start Over</button>
+        <button id="next">Next Level</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* -------- Inline SVG sprites -------- */
+const SPRITES={
+  player:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='6' y='6' width='52' height='52' rx='10' fill='#3498db' stroke='#000' stroke-width='3'/><circle cx='26' cy='26' r='4' fill='#000'/><circle cx='38' cy='26' r='4' fill='#000'/><path d='M22 42 q10 8 20 0' fill='none' stroke='#000' stroke-width='3' stroke-linecap='round'/></svg>`)}`,
+  grass:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='20' y='44' fill='#0ea14b'/><g stroke='#0ea14b' stroke-width='4' stroke-linecap='round' fill='none'><path d='M8 60 L12 44'/><path d='M16 60 L20 44'/><path d='M24 60 L28 44'/><path d='M36 60 L40 44'/><path d='M44 60 L48 44'/><path d='M52 60 L56 44'/></g></svg>`)}`,
+  doom:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='16' y='6' width='32' height='52' rx='6' fill='#111' stroke='#bbb' stroke-width='3'/><rect x='21' y='14' width='22' height='30' rx='3' fill='#1e1e1e'/><path d='M23 18 h18 m-18 6 h18 m-18 6 h18 m-18 6 h14' stroke='#61dafb' stroke-width='3'/></svg>`)}`,
+  brain:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><path d='M20 18 a12 12 0 0 1 24 0 v0 a12 12 0 0 1 8 12 v4 a14 14 0 0 1 -14 14 h-12 a14 14 0 0 1 -14 -14 v-4 a12 12 0 0 1 8 -12z' fill='#ff6fab' stroke='#b21e6b' stroke-width='3'/><path d='M26 18 v28 M38 18 v28' stroke='#b21e6b' stroke-width='3'/></svg>`)}`,
+  couch:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='8' y='28' width='48' height='16' rx='4' fill='#c66' stroke='#722' stroke-width='3'/><rect x='12' y='22' width='40' height='10' rx='4' fill='#e88' stroke='#722' stroke-width='3'/><rect x='10' y='44' width='44' height='6' rx='2' fill='#833'/></svg>`)}`,
+  vibe:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><polygon points='32,6 38,24 58,24 42,36 48,54 32,43 16,54 22,36 6,24 26,24' fill='#ffd54a' stroke='#a47d00' stroke-width='3'/><text x='32' y='59' font-size='14' fill='#fff' text-anchor='middle' font-family='system-ui'>+1</text></svg>`)}`,
+  sprout:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='28' y='28' width='8' height='28' fill='#207d3a'/><ellipse cx='22' cy='24' rx='12' ry='8' fill='#2ecc71'/><ellipse cx='42' cy='18' rx='10' ry='7' fill='#2ecc71'/></svg>`)}`,
+  sun:`data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='12' fill='#ffd34a' stroke='#a47d00' stroke-width='3'/><g stroke='#ffd34a' stroke-width='4'><line x1='32' y1='6' x2='32' y2='16'/><line x1='32' y1='48' x2='32' y2='58'/><line x1='6' y1='32' x2='16' y2='32'/><line x1='48' y1='32' x2='58' y2='32'/><line x1='12' y1='12' x2='19' y2='19'/><line x1='52' y1='12' x2='45' y2='19'/><line x1='12' y1='52' x2='19' y2='45'/><line x1='52' y1='52' x2='45' y2='45'/></g></svg>`)}`
+};
+  /* -------- DOM refs -------- */
 const board=document.getElementById('board');
 const player=document.getElementById('player');
 const grass=document.getElementById('grass');
@@ -132,11 +194,22 @@ function resetPlayer(){
 function spawnTile(speedBase){ 
   const d=badHabits[Math.random()*badHabits.length|0];
   const el=document.createElement('div'); el.className='tile';
-  let x,y;
-  do {
-    x=60+Math.random()*350;
-    y=20+Math.random()*350;
-  } while(Math.hypot(x-20,y-20)<120); // safe spawn
+  let x,y,valid=false;
+
+  // keep away from spawn + corners
+  while(!valid){
+    x=60+Math.random()*(board.clientWidth-120);
+    y=20+Math.random()*(board.clientHeight-120);
+    valid=true;
+    const safeZone=120;
+    if((x<safeZone && y<safeZone) || 
+       (x>board.clientWidth-safeZone && y<safeZone) ||
+       (x<safeZone && y>board.clientHeight-safeZone) ||
+       (x>board.clientWidth-safeZone && y>board.clientHeight-safeZone)){
+      valid=false;
+    }
+  }
+
   el.style.left=x+'px'; el.style.top=y+'px';
   el.innerHTML=`<img src="${d.img}" alt=""><span>${d.label}</span>`;
   board.appendChild(el);
@@ -145,6 +218,7 @@ function spawnTile(speedBase){
   el.vx=Math.cos(ang)*sp; el.vy=Math.sin(ang)*sp;
   tiles.push(el);
 }
+
 function spawnBubble(){ 
   const d=goodVibes[Math.random()*goodVibes.length|0]; 
   const b=document.createElement('div'); 
@@ -180,7 +254,7 @@ function checkCollisions(){
   for(const b of bubbles){ 
     if(rectsOverlap(pr,b.el.getBoundingClientRect())){ 
       score++; scoreEl.textContent=score; 
-      time=Math.min(60,time+5); // ✅ add +5s but cap at 60
+      time=Math.min(60,time+5); // ✅ add +5s, cap at 60
       timerEl.textContent=time; 
       showToast("✨ "+b.el.innerText+" (+5s)"); 
       beep(620,0.1); 
@@ -199,6 +273,18 @@ function updatePlayer(){
       let x=t.offsetLeft+t.vx,y=t.offsetTop+t.vy;
       if(x<=0||x+60>=rect.width) t.vx*=-1; 
       if(y<=0||y+60>=rect.height) t.vy*=-1;
+
+      // keep out of corners while moving
+      const safeZone=100;
+      if((x<safeZone && y<safeZone) ||
+         (x>rect.width-safeZone && y<safeZone) ||
+         (x<safeZone && y>rect.height-safeZone) ||
+         (x>rect.width-safeZone && y>rect.height-safeZone)){
+        const cx=rect.width/2, cy=rect.height/2;
+        const dx=cx-x, dy=cy-y, dist=Math.hypot(dx,dy);
+        t.vx=(dx/dist)*2; t.vy=(dy/dist)*2;
+      }
+
       if(Math.abs(t.vx)<0.2 && Math.abs(t.vy)<0.2){ 
         const ang=Math.random()*Math.PI*2; const sp=2; 
         t.vx=Math.cos(ang)*sp; t.vy=Math.sin(ang)*sp; 
@@ -231,7 +317,7 @@ document.addEventListener('touchmove',e=>{if(!dragging||!running)return;e.preven
 function startLevel(lv){ 
   level=lv; 
   levelEl.textContent=level; 
-  time=60;  // ✅ reset to 60s each level
+  time=60;  // reset timer
   timerEl.textContent=time; 
   tiles.forEach(t=>t.remove()); tiles=[]; 
   bubbles.forEach(b=>b.el.remove()); bubbles=[]; 
